@@ -1,30 +1,0 @@
-  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
-                                 Dload  Upload  Total   Spent   Left   Speed
-  0      0   0      0   0      0      0      0                              0*   Trying 127.0.0.1:3100...
-* Established connection to 127.0.0.1 (127.0.0.1 port 3100) from 127.0.0.1 port 53739 
-* using HTTP/1.x
-> GET /airflow/ HTTP/1.1
-> Host: 127.0.0.1:3100
-> User-Agent: curl/8.18.0
-> Accept: */*
-> 
-* Request completely sent off
-< HTTP/1.1 302 Found
-< Server: nginx/1.25.5
-< Date: Wed, 18 Mar 2026 06:53:33 GMT
-< Content-Type: text/html; charset=utf-8
-< Content-Length: 334
-< Connection: keep-alive
-< Cache-Control: no-cache, no-store, must-revalidate, max-age=0
-< Expires: Thu, 01 Jan 1970 00:00:00 UTC
-< Location: http://localhost:8084/realms/lakehouse/protocol/openid-connect/auth?approval_prompt=force&client_id=lakehouse-portal&redirect_uri=http%3A%2F%2Flocalhost%3A3100%2Foauth2%2Fcallback&response_type=code&scope=openid+email+profile&state=3t1GLQoRvH2W3O6rw3c-v7fFnzBAK7xdS4r3tyuqs8k%3A%2Fairflow%2F
-< Set-Cookie: _oauth2_proxy_csrf=dKHAECcaKwm7uBPMuqrPrJ8MfGDkpvUFePz3gOcqIEZpm-mzKu6N_siI5KgPg14rSR5UhmqSV07GTEZlhfaRcT7SGHXA0WVYNaReaIkFDp9FuP6N3-E5Moc=|1773816813|bAYQokV0HfU5hjxwB6wjKhihMo4fQnmnYUDaddoUPTg=; Path=/; Domain=127.0.0.1; Expires=Wed, 18 Mar 2026 07:08:33 GMT; HttpOnly
-< X-Frame-Options: SAMEORIGIN
-< X-Content-Type-Options: nosniff
-< X-XSS-Protection: 1; mode=block
-< 
-{ [334 bytes data]
-100    334 100    334   0      0   9766      0                              0100    334 100    334   0      0   9673      0                              0100    334 100    334   0      0   9580      0                              0
-* Connection #0 to host 127.0.0.1:3100 left intact
-<a href="http://localhost:8084/realms/lakehouse/protocol/openid-connect/auth?approval_prompt=force&amp;client_id=lakehouse-portal&amp;redirect_uri=http%3A%2F%2Flocalhost%3A3100%2Foauth2%2Fcallback&amp;response_type=code&amp;scope=openid+email+profile&amp;state=3t1GLQoRvH2W3O6rw3c-v7fFnzBAK7xdS4r3tyuqs8k%3A%2Fairflow%2F">Found</a>.
-
