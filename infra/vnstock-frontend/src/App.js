@@ -18,7 +18,7 @@
  *   DT = DrawingToolbar (vertical)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import CandlestickChart from "./components/CandlestickChart";
 import Watchlist from "./components/Watchlist";
 import NewsTicker from "./components/NewsTicker";
@@ -26,12 +26,15 @@ import QuotePanel from "./components/QuotePanel";
 import PriceBoard from "./components/PriceBoard";
 import SectorHeatmap from "./components/SectorHeatmap";
 import DrawingToolbar, { DEFAULT_TOOL_SETTINGS } from "./components/DrawingToolbar";
+import { fetchSummary } from "./services/api";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("chart"); // "chart" | "board" | "sector"
   const [symbol, setSymbol] = useState("VCB");
   const [latestPrice, setLatestPrice] = useState(null);
   const [latestQuote, setLatestQuote] = useState(null);
+  const [secdef, setSecdef] = useState(null);   // {basicPrice, ceilingPrice, floorPrice}
+  const [daily, setDaily] = useState(null);     // {todayOpen, todayHigh, todayLow, ...}
 
   // Drawing tools state
   const [activeTool, setActiveTool] = useState("cursor");
@@ -60,12 +63,26 @@ export default function App() {
     setActiveTab("chart");
   }, []);
 
-  // Calculate % change
+  // Fetch secdef + daily when symbol changes
+  useEffect(() => {
+    let cancelled = false;
+    fetchSummary(symbol)
+      .then((data) => {
+        if (cancelled) return;
+        if (data.secdef) setSecdef(data.secdef);
+        if (data.daily) setDaily(data.daily);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  // Calculate % change using basicPrice (tham chiếu) as reference — same logic as SSI iBoard
+  const refPrice = secdef?.basicPrice || (latestPrice && latestPrice.open) || 0;
   const change =
-    latestPrice && latestPrice.open
-      ? ((latestPrice.close - latestPrice.open) / latestPrice.open) * 100
+    latestPrice && refPrice > 0
+      ? ((latestPrice.close - refPrice) / refPrice) * 100
       : null;
-  const isUp = latestPrice ? latestPrice.close >= latestPrice.open : true;
+  const isUp = latestPrice ? latestPrice.close >= refPrice : true;
   const priceColor = isUp ? "text-up" : "text-down";
 
   return (
@@ -113,6 +130,22 @@ export default function App() {
                       {change.toFixed(2)}%
                     </span>
                   )}
+                </>
+              )}
+              {/* Reference price bar: Trần / Sàn / TC / Mở / Cao / Thấp */}
+              {secdef && (
+                <>
+                  <span className="text-xs text-bg-tertiary">│</span>
+                  <span className="text-xs"><span className="text-purple-400">Trần</span> <span className="font-mono text-purple-400">{secdef.ceilingPrice?.toLocaleString("vi-VN")}</span></span>
+                  <span className="text-xs"><span className="text-cyan-400">Sàn</span> <span className="font-mono text-cyan-400">{secdef.floorPrice?.toLocaleString("vi-VN")}</span></span>
+                  <span className="text-xs"><span className="text-yellow-400">TC</span> <span className="font-mono text-yellow-400">{secdef.basicPrice?.toLocaleString("vi-VN")}</span></span>
+                </>
+              )}
+              {daily && (
+                <>
+                  <span className="text-xs"><span className="text-text-secondary">Mở</span> <span className="font-mono">{daily.todayOpen?.toLocaleString("vi-VN") || "—"}</span></span>
+                  <span className="text-xs"><span className="text-text-secondary">Cao</span> <span className="font-mono">{daily.todayHigh?.toLocaleString("vi-VN") || "—"}</span></span>
+                  <span className="text-xs"><span className="text-text-secondary">Thấp</span> <span className="font-mono">{daily.todayLow?.toLocaleString("vi-VN") || "—"}</span></span>
                 </>
               )}
             </>

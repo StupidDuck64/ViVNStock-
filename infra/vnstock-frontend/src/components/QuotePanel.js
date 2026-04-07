@@ -67,8 +67,8 @@ export default function QuotePanel({ symbol, quote }) {
       }
     }
 
-    if (Array.isArray(quote.offer)) {
-      quote.offer.forEach((a) => asks.push({ price: a.price, vol: a.volume || a.qty }));
+    if (Array.isArray(quote.offer) || Array.isArray(quote.ask)) {
+      (quote.offer || quote.ask).forEach((a) => asks.push({ price: a.price, vol: a.volume || a.qty }));
     } else {
       for (let i = 1; i <= 10; i++) {
         const key = String(i).padStart(2, "0");

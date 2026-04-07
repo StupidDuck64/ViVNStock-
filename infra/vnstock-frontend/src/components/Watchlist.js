@@ -90,12 +90,13 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
         {filtered.map((s) => {
           const tick = prices[s.symbol];
           const daily = dailyMap[s.symbol];
-          const price = tick?.close || daily?.todayClose || 0;
+          // Prefer daily.todayClose (which includes ATC matches) over raw tick trades
+          const price = daily?.todayClose || tick?.close || 0;
           // Use basicPrice (previous session close) as reference for % change
           const ref = daily?.basicPrice || daily?.prevClose || tick?.open || price;
-          const changePct = daily?.changePct != null
-            ? daily.changePct
-            : (ref > 0 ? ((price - ref) / ref) * 100 : 0);
+          // Always calculate changePct derived from the current displayed price to ensure math is visible and sound
+          const changePct = ref > 0 ? ((price - ref) / ref) * 100 : 0;
+
           const isUp = changePct >= 0;
           const isActive = selectedSymbol === s.symbol;
 

@@ -21,7 +21,7 @@ import {
   HistogramSeries,
   LineSeries,
 } from "lightweight-charts";
-import { fetchHistory, subscribeRealtime, TIMEFRAMES } from "../services/api";
+import { fetchHistory, subscribeRealtime, TIMEFRAMES, fetchSummary } from "../services/api";
 import ChartOverlay from "./ChartOverlay";
 import IndicatorPanel from "./chart/IndicatorPanel";
 import {
@@ -414,7 +414,22 @@ export default function CandlestickChart({
       updateIndicatorSeries(candles);
 
       if (candles.length > 0) {
-        const last = candles[candles.length - 1];
+        let last = candles[candles.length - 1];
+        
+        try {
+          // Fetch current real-time state to ensure chart accurately reflects final ATC or latest tick
+          // Since history candles might lag by a few minutes or miss the final auction match
+          const summary = await fetchSummary(symbol);
+          const livePrice = summary?.daily?.todayClose || summary?.tick?.close;
+          if (livePrice != null && livePrice > 0 && livePrice !== last.close) {
+            // Update the last candle's close so the chart displays the correct current real-time price
+            last = { ...last, close: livePrice };
+            candleRef.current.update(last);
+          }
+        } catch (e) {
+          // Ignore if realtime summary fetch fails, chart will just use last history candle
+        }
+
         if (onPriceUpdate) onPriceUpdate(last);
       }
       chartRef.current?.timeScale().fitContent();

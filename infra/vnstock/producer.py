@@ -113,6 +113,9 @@ def _build_symbol_lists():
     combined = hose + hnx + upcom + deriv + index
     if not combined:
         combined = _parse_symbols(SYMBOLS_ALL_RAW)
+        hose = combined
+        hnx = combined
+        upcom = combined
     return {"hose": hose, "hnx": hnx, "upcom": upcom,
             "deriv": deriv, "index": index, "all": combined}
 
@@ -223,17 +226,19 @@ async def _write_tick_redis(r: aioredis.Redis, tick: dict):
 
 
 async def _publish_kafka(kafka: AIOKafkaProducer, tick: dict):
-    """Publish tick as Confluent Avro to Kafka."""
+    """Publish tick as Confluent Avro to Kafka (fire-and-forget, never blocks event loop)."""
     if kafka is None or _avro_schema_id < 0:
         return
     try:
         key = tick["symbol"].encode("utf-8")
         value = _encode_avro(tick)
-        await kafka.send(KAFKA_TOPIC, key=key, value=value)
+        # Fire-and-forget: create_task so Kafka timeout never blocks Redis/WS handlers
+        fut = await kafka.send(KAFKA_TOPIC, key=key, value=value)
         _stats["kafka_sent"] += 1
     except Exception as e:
         _stats["errors"] += 1
-        logger.error("Kafka publish error: %s", e)
+        if _stats["errors"] % 500 == 1:  # Log every 500th error to avoid flooding
+            logger.error("Kafka publish error: %s", e)
 
 
 async def _handle_trade(r: aioredis.Redis, kafka: AIOKafkaProducer, trade: Trade):
@@ -293,15 +298,22 @@ async def _handle_ohlc_1m(r: aioredis.Redis, kafka: AIOKafkaProducer, ohlc: Ohlc
 
 
 async def _handle_ohlc_1d(r: aioredis.Redis, ohlc: Ohlc):
-    """Daily OHLC → Redis daily data."""
+    """Daily OHLC → Redis daily data (merge with existing secdef)."""
     try:
         sym = ohlc.symbol
-        daily = {
+        # Read existing daily data to preserve secdef fields
+        existing_raw = await r.get(f"vnstock:daily:{sym}")
+        daily = json.loads(existing_raw) if existing_raw else {}
+        daily.update({
             "symbol": sym,
             "todayOpen": float(ohlc.open), "todayHigh": float(ohlc.high),
             "todayLow": float(ohlc.low), "todayClose": float(ohlc.close),
             "todayVol": int(ohlc.volume),
-        }
+        })
+        # Recompute changePct if we have prevClose (from secdef)
+        ref = daily.get("prevClose", 0)
+        if ref and ref > 0:
+            daily["changePct"] = round(((float(ohlc.close) - ref) / ref) * 100, 4)
         await r.set(f"vnstock:daily:{sym}", json.dumps(daily))
         _stats["ws_ohlc_1d"] += 1
     except Exception as e:
@@ -313,22 +325,9 @@ async def _handle_secdef(r: aioredis.Redis, sd: SecurityDefinition):
     """Security definition → Redis secdef + daily changePct."""
     try:
         sym = sd.symbol
-        secdef = {
-            "basicPrice": float(sd.basicPrice),
-            "ceilingPrice": float(sd.ceilingPrice),
-            "floorPrice": float(sd.floorPrice),
-        }
-        await r.set(f"vnstock:secdef:{sym}", json.dumps(secdef))
-
-        daily_raw = await r.get(f"vnstock:daily:{sym}")
-        if daily_raw:
-            daily = json.loads(daily_raw)
-            if sd.basicPrice > 0:
-                change_pct = (daily.get("todayClose", 0) - float(sd.basicPrice)) / float(sd.basicPrice) * 100
-                daily["changePct"] = round(change_pct, 4)
-                daily["prevClose"] = float(sd.basicPrice)
-                await r.set(f"vnstock:daily:{sym}", json.dumps(daily))
-        _stats["ws_secdef"] += 1
+        # We DO NOT want the websocket to override basicPrice because it often sends T-1 or outdated reference data.
+        # The REST batch layer _fetch_daily is the authoritative source for basicPrice/ceiling/floor.
+        pass
     except Exception as e:
         _stats["errors"] += 1
         logger.error("SecDef handler error for %s: %s", getattr(sd, "symbol", "?"), e)
@@ -473,8 +472,13 @@ def _fetch_finalized_candle(symbol: str) -> dict | None:
         data = resp.json()
         if not data.get("t") or len(data["t"]) < 2:
             return None
-        # Second-to-last candle = last finalized (current candle is still forming)
-        idx = len(data["t"]) - 2
+        
+        # A candle of resolution 1m is fully finalized after its start + 60s
+        idx = len(data["t"]) - 1
+        last_t = int(data["t"][idx])
+        if now_ts < last_t + 60:
+            idx -= 1
+
         candle_time_sec = int(data["t"][idx])
         return {
             "symbol": symbol, "time": candle_time_sec * 1000,
@@ -501,18 +505,40 @@ def _fetch_daily(symbol: str) -> dict | None:
         data = resp.json()
         if not data.get("t") or len(data["t"]) < 2:
             return None
+        import datetime
+        import pytz
+        vn_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+        now_vn = datetime.datetime.now(vn_tz).date()
+        last_t = int(data["t"][-1])
+        last_date = datetime.datetime.fromtimestamp(last_t, vn_tz).date()
+        
         n = len(data["t"])
-        prev_close = float(data["c"][n - 2])
-        today_close = float(data["c"][n - 1])
-        ceiling = round(prev_close * 1.07)
-        floor_p = round(prev_close * 0.93)
+        if last_date >= now_vn:
+            # We are in the current trading day
+            prev_close = float(data["c"][n - 2]) if n >= 2 else float(data["c"][n - 1])
+            today_close = float(data["c"][n - 1])
+            today_open = float(data["o"][n - 1])
+            today_high = float(data["h"][n - 1])
+            today_low = float(data["l"][n - 1])
+            today_vol = int(data["v"][n - 1])
+        else:
+            # Market hasn't started yet today, so the latest data is yesterday
+            prev_close = float(data["c"][n - 1])
+            today_close = prev_close
+            today_open = float(data["c"][n - 1])
+            today_high = float(data["h"][n - 1])
+            today_low = float(data["l"][n - 1])
+            today_vol = 0
+
+        ceiling = round(prev_close * 1.07, 2)
+        floor_p = round(prev_close * 0.93, 2)
         change_pct = ((today_close - prev_close) / prev_close * 100
                       if prev_close > 0 else 0)
         return {
             "symbol": symbol, "prevClose": prev_close,
-            "todayOpen": float(data["o"][n - 1]), "todayClose": today_close,
-            "todayHigh": float(data["h"][n - 1]), "todayLow": float(data["l"][n - 1]),
-            "todayVol": int(data["v"][n - 1]),
+            "todayOpen": today_open, "todayClose": today_close,
+            "todayHigh": today_high, "todayLow": today_low,
+            "todayVol": today_vol,
             "changePct": round(change_pct, 4),
             "basicPrice": prev_close, "ceilingPrice": ceiling, "floorPrice": floor_p,
         }
@@ -532,12 +558,14 @@ async def rest_batch_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
     executor = ThreadPoolExecutor(max_workers=MAX_WORKERS)
     last_daily_fetch = 0
 
+    first_run = True
     while not stop_event.is_set():
         cycle_start = time.time()
 
-        if not is_market_open():
+        if not is_market_open() and not first_run:
             await asyncio.sleep(60)
             continue
+        first_run = False
 
         try:
             # ─── Daily secdef refresh (every 5 min, REST fallback) ───
