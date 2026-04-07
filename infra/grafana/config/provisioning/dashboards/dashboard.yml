@@ -1,0 +1,11 @@
+
+# ./grafana/provisioning/dashboard.yml
+apiVersion: 1
+
+providers:
+  - name: default
+    orgId: 1
+    folder: Observability
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

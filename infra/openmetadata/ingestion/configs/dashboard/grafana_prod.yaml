@@ -1,0 +1,41 @@
+source:
+  type: grafana
+  serviceName: grafana_prod
+  serviceConnection:
+    config:
+      type: Grafana
+      hostPort: http://${GRAFANA_HOST}:${GRAFANA_PORT}
+      apiKey: ${GRAFANA_API_KEY}
+      verifySSL: true
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      markDeletedDashboards: true
+      includeTags: true
+      includeOwners: true
+      includeDataModels: false
+      includeDraftDashboard: false
+
+      # Optional: Filter dashboards by name pattern
+      # dashboardFilterPattern:
+      #   includes:
+      #     - ".*production.*"
+      #   excludes:
+      #     - ".*test.*"
+
+      # Optional: Database service name for lineage
+      # If panels contain SQL queries, this will create lineage to tables
+      # dbServiceName: my_postgres_service
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: ${OPENMETADATA_HOST}
+    authProvider: ${OPENMETADATA_AUTH_TYPE}
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN}
+    storeServiceConnection: true

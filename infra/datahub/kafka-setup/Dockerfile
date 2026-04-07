@@ -1,0 +1,1 @@
+FROM acryldata/datahub-kafka-setup:releases-v1.1.0

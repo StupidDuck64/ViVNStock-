@@ -1,0 +1,19 @@
+source:
+  type: trino
+  config:
+    host_port: "192.168.26.181:8080"
+    username: "ranger-admin"
+    database: "iceberg" # Sử dụng catalog iceberg
+    schema_pattern:
+      allow:
+        - ".*"
+    table_pattern:
+      allow:
+        - ".*"
+    profiling:
+      enabled: false
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://datahub-gms:8080"

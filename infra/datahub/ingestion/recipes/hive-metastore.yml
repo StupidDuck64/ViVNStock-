@@ -1,0 +1,25 @@
+source:
+  type: hive
+  config:
+    host_port: "192.168.26.181:10000"
+
+    # Lấy TẤT CẢ databases
+    database_pattern:
+      allow:
+        - ".*"
+      deny:
+        - "^information_schema$"
+        - "^sys$"
+
+    # Lấy TẤT CẢ tables
+    table_pattern:
+      allow:
+        - ".*"
+
+    profiling:
+      enabled: false
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://datahub-gms:8080"

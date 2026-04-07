@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "ExpectedPrice",
+  "namespace": "com.vnstock.avro",
+  "fields": [
+    {"name": "symbol",                "type": "string"},
+    {"name": "marketId",              "type": "string", "default": ""},
+    {"name": "boardId",               "type": "string", "default": ""},
+    {"name": "closePrice",            "type": "double"},
+    {"name": "expectedTradePrice",    "type": "double"},
+    {"name": "expectedTradeQuantity", "type": "long"},
+    {"name": "is_expected",           "type": "boolean", "default": true},
+    {"name": "source",                "type": "string",  "default": "DNSE"},
+    {"name": "ingest_timestamp",      "type": "long"}
+  ]
+}

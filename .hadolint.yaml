@@ -1,0 +1,19 @@
+# Hadolint configuration for Dockerfile linting
+# https://github.com/hadolint/hadolint
+
+ignored:
+  # Don't require pinned versions in apt-get
+  - DL3008
+  # Allow using ADD instead of COPY in some cases
+  - DL3020
+  # Don't require pinned pip versions
+  - DL3013
+  # Allow curl/wget in RUN
+  - DL3018
+  # Allow using cd in RUN
+  - DL3003
+
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - quay.io

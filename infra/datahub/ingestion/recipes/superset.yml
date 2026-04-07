@@ -1,0 +1,21 @@
+source:
+  type: superset
+  config:
+    connect_uri: "http://192.168.26.181:8089/"
+    username: "admin"
+    password: "admin"
+    provider: db
+    env: PROD
+
+    dashboard_pattern:
+      allow:
+        - ".*"
+
+    chart_pattern:
+      allow:
+        - ".*"
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://datahub-gms:8080"

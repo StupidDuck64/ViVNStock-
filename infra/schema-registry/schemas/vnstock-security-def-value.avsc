@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "SecurityDefinition",
+  "namespace": "com.vnstock.avro",
+  "fields": [
+    {"name": "symbol",          "type": "string"},
+    {"name": "marketId",        "type": "string"},
+    {"name": "boardId",         "type": "string", "default": ""},
+    {"name": "isin",            "type": "string", "default": ""},
+    {"name": "basicPrice",      "type": "double"},
+    {"name": "ceilingPrice",    "type": "double"},
+    {"name": "floorPrice",      "type": "double"},
+    {"name": "securityStatus",  "type": "string", "default": ""},
+    {"name": "source",          "type": "string", "default": "DNSE"},
+    {"name": "ingest_timestamp","type": "long"}
+  ]
+}

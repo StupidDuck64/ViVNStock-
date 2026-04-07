@@ -1,0 +1,40 @@
+# =============================================================================
+# Publish Stage — Tag and push final images to Docker Hub
+# =============================================================================
+# Tags images with branch-based tags for the single VM deployment.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Publish images (dev and main branches)
+# ---------------------------------------------------------------------------
+publish:images:
+  stage: publish
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+  script:
+    - |
+      SERVICES="postgres redis minio kafka schema-registry debezium kafka-ui \
+        spark spark-thriftserver airflow flink hive-metastore trino clickhouse \
+        clickhouse-keeper superset jupyterlab keycloak vault ranger-admin \
+        elasticsearch logstash kibana data-generator nifi \
+        openmetadata-server openmetadata-ingestion"
+      
+      for svc in ${SERVICES}; do
+        SOURCE="${DOCKERHUB_REPO}-${svc}:${IMAGE_TAG}"
+        TARGET_BRANCH="${DOCKERHUB_REPO}-${svc}:${CI_COMMIT_REF_SLUG}"
+        TARGET_LATEST="${DOCKERHUB_REPO}-${svc}:latest"
+        docker pull "${SOURCE}" 2>/dev/null && \
+          docker tag "${SOURCE}" "${TARGET_BRANCH}" && \
+          docker tag "${SOURCE}" "${TARGET_LATEST}" && \
+          docker push "${TARGET_BRANCH}" && \
+          docker push "${TARGET_LATEST}" && \
+          echo "✅ ${svc} → ${CI_COMMIT_REF_SLUG} + latest" || \
+          echo "⏭️  ${svc} (unchanged)"
+      done
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"

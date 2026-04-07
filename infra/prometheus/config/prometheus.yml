@@ -1,0 +1,330 @@
+global:
+  scrape_interval: 15s # Xác định tần suất Prometheus scrape dữ liệu từ các target.
+  scrape_timeout: 10s # Thời gian tối đa một request scrape một target.
+  evaluation_interval: 1m # Tần suất Prometheus đánh giá các rule và alerting rule.
+  rule_query_offset: 10s # Thời gian dùng để đánh giá rule tính từ thời điểm trước đó đến hiện tại
+
+rule_files:
+  - alert-rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets: ['alertmanager:9093']
+
+# Scrape configurations
+scrape_configs:
+  # ==============================================================================================
+  # SCRAPE DOCKER METRICS
+  # ==============================================================================================
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # ==============================================================================================
+  # SCRAPE PROMETHEUS METRICS
+  # ==============================================================================================
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ==============================================================================================
+  # SCRAPE TRINO API METRICS
+  # ==============================================================================================
+  - job_name: "trino"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["trino:8080"]
+    basic_auth:
+      username: "fss"
+      password: ""
+
+  # ==============================================================================================
+  # SCRAPE NODE EXPORTER (Host RAM/CPU/Disk)
+  # ==============================================================================================
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # ==============================================================================================
+  # SCRAPE KAFKA JMX EXPORTER (Consumer Lag, Broker Metrics)
+  # ==============================================================================================
+  - job_name: "kafka"
+    static_configs:
+      - targets: ["kafka:9404"]
+    metrics_path: /metrics
+
+  # ==============================================================================================
+  # SCRAPE SPARK METRICS (Master + Workers)
+  # ==============================================================================================
+  - job_name: "spark-master"
+    metrics_path: /metrics/prometheus
+    static_configs:
+      - targets: ["spark-master:8080"]
+
+  - job_name: "spark-worker"
+    metrics_path: /metrics/prometheus
+    static_configs:
+      - targets: ["spark-worker-1:8081", "spark-worker-2:8081"]
+
+  # ==============================================================================================
+  # SCRAPE POSTGRES EXPORTER
+  # ==============================================================================================
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # ==============================================================================================
+  # SCRAPE VNSTOCK API
+  # ==============================================================================================
+  - job_name: "vnstock-api"
+    metrics_path: /api/health
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["vnstock-api:8000"]
+
+  # ==============================================================================================
+  # SCRAPE AIRFLOW HEALTH
+  # ==============================================================================================
+  - job_name: "airflow"
+    metrics_path: /health
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["airflow-apiserver:8080"]
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO API METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_api_request"
+  #   metrics_path: /minio/metrics/v3/api/requests
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_api_bucket"
+  #   metrics_path: /minio/metrics/v3/bucket/api
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_audit"
+  #   metrics_path: /minio/metrics/v3/audit
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # - job_name: "minio_batch"
+  # #   metrics_path: /minio/metrics/v3/batch
+  # #   static_configs:
+  # #     - targets: ["192.168.1.123:9000"]
+  # #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_bucket_batch"
+  #   metrics_path: /minio/metrics/v3/bucket/batch
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO CLUSTER METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_cluster_config"
+  #   metrics_path: /minio/metrics/v3/cluster/config
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_cluster_erasure_set"
+  #   metrics_path: /minio/metrics/v3/cluster/erasure-set
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_cluster_health"
+  #   metrics_path: /minio/metrics/v3/cluster/health
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_cluster_iam"
+  #   metrics_path: /minio/metrics/v3/cluster/iam
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_cluster_usage_buckets"
+  #   metrics_path: /minio/metrics/v3/cluster/usage/buckets
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_cluster_usage_objects"
+  #   metrics_path: /minio/metrics/v3/cluster/usage/objects
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO DEBUG METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_debug_go"
+  #   metrics_path: /minio/metrics/v3/debug/go
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO ILM METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_ilm"
+  #   metrics_path: /minio/metrics/v3/ilm
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO LOGGER WEBHOOK METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_logger_webhook"
+  #   metrics_path: /minio/metrics/v3/logger/webhook
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO NOTIFICATION METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_notification"
+  #   metrics_path: /minio/metrics/v3/notification
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO REPLICATION METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_replication"
+  #   metrics_path: /minio/metrics/v3/replication
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_bucket_replication"
+  #   metrics_path: /minio/metrics/v3/bucket/replication
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO SCANNER METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_scanner"
+  #   metrics_path: /minio/metrics/v3/scanner
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # # ==============================================================================================
+  # # SCRAPE MINIO SYSTEM METRICS
+  # # ==============================================================================================
+  # - job_name: "minio_system_cpu"
+  #   metrics_path: /minio/metrics/v3/system/cpu
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_system_drive"
+  #   metrics_path: /minio/metrics/v3/system/drive
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_system_memory"
+  #   metrics_path: /minio/metrics/v3/system/memory
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_system_network_internode"
+  #   metrics_path: /minio/metrics/v3/system/network/internode
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # - job_name: "minio_system_process"
+  #   metrics_path: /minio/metrics/v3/system/process
+  #   static_configs:
+  #     - targets: ["192.168.1.123:9000"]
+  #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # ==============================================================================================
+  # SCRAPE MINIO V2 METRICS
+  # ==============================================================================================
+  - job_name: "minio_cluster"
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ["minio:9000"]
+    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  - job_name: "minio_bucket"
+    metrics_path: /minio/v2/metrics/bucket
+    static_configs:
+      - targets: ["minio:9000"]
+    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  - job_name: "minio_resource"
+    metrics_path: /minio/v2/metrics/resource
+    static_configs:
+      - targets: ["minio:9000"]
+    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  - job_name: "minio_node"
+    metrics_path: /minio/v2/metrics/node
+    static_configs:
+      - targets: ["minio:9000"]
+    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # ==============================================================================================
+  # SCRAPE CLICKHOUSE DATABASE METRICS
+  # ==============================================================================================
+  - job_name: "clickhouse"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["clickhouse:8123"]
+        labels:
+          cluster: "prod-cluster-01"
+          environment: "prod"
+    basic_auth:
+      username: "admin"
+      password: "admin123"
+
+  # ==============================================================================================
+  # SCRAPE APACHE NIFI METRICS
+  # ==============================================================================================
+  - job_name: "nifi"
+    metrics_path: "/nifi-api/flow/metrics/prometheus"
+    static_configs:
+      - targets: ["nifi:8086"]
+        labels:
+          cluster: "nifi-cluster"
+          environment: "prod"
+    # basic_auth:
+    #   username: "admin"
+    #   password: "admin"
+
+  # ==============================================================================================
+  # SCRAPE LOKI METRICS
+  # ==============================================================================================
+  - job_name: "loki"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["loki:3100"]
+
+  # ==============================================================================================
+  # SCRAPE PUSHGATEWAY (for Spark batch metrics)
+  # ==============================================================================================
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+  

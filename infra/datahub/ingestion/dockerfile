@@ -1,0 +1,27 @@
+FROM acryldata/datahub-ingestion:releases-v1.1.0
+
+# Fix: 'No module named pkg_resources' error
+# setuptools >= 78 removed pkg_resources. DataHub Actions uses `uv` (not pip)
+# to create ingestion venvs, so we need UV_CONSTRAINT to pin setuptools < 78.
+
+USER root
+
+# 1. Create a constraint file to pin setuptools < 78
+RUN mkdir -p /etc/pip && \
+    echo "setuptools<78" > /etc/pip/constraints.txt
+
+# 2. Set constraint env vars for BOTH uv and pip
+#    UV_CONSTRAINT is used by uv when creating/installing in venvs
+#    PIP_CONSTRAINT is used by pip as fallback
+ENV UV_CONSTRAINT=/etc/pip/constraints.txt
+ENV PIP_CONSTRAINT=/etc/pip/constraints.txt
+
+# 3. Install pinned setuptools into the main venv and system python
+RUN pip install --no-cache-dir "setuptools<78" wheel 2>/dev/null || true && \
+    pip3 install --no-cache-dir "setuptools<78" wheel 2>/dev/null || true
+
+# 4. Clean up any previously cached ingestion venvs so they get recreated
+#    with the new constraint on next run
+RUN rm -rf /tmp/datahub/ingest/venv-* 2>/dev/null || true
+
+USER datahub

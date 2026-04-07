@@ -1,0 +1,16 @@
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0
+HTTP/1.1 302 Found
+Server: nginx/1.25.5
+Date: Wed, 18 Mar 2026 06:39:10 GMT
+Content-Type: text/html; charset=utf-8
+Connection: keep-alive
+Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+Expires: Thu, 01 Jan 1970 00:00:00 UTC
+Location: http://localhost:8084/realms/lakehouse/protocol/openid-connect/auth?approval_prompt=force&client_id=lakehouse-portal&redirect_uri=http%3A%2F%2Flocalhost%3A3100%2Foauth2%2Fcallback&response_type=code&scope=openid+email+profile&state=0p__XKeywroHC4p0TQKDcDVOTfiltQsfgo9OHSA7g_c%3A%2Fairflow%2F
+Set-Cookie: _oauth2_proxy_csrf=H2bbmZ9Alj2F5COX-6LnrnVodmiAW4ODltRhPqNmqWnPuiOyIYZYXGD-tkjkhBYDgq-07W0jRCm_sBSwxZAZ9Jdkhsc6UTl9U-7_4OOiwZqwOYsXsTYSXvA=|1773815950|dOHh_fgWXhzIIOvZVNZZy-uq-YN2BLJKhexiRQmB1PU=; Path=/; Expires=Wed, 18 Mar 2026 06:54:10 GMT; HttpOnly
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+

@@ -1,0 +1,730 @@
+# VVS Data Lakehouse (Vietnam Vantage Securities)
+
+> **Real-time Vietnamese Stock Market Platform** — Lambda Architecture on 100% Open-Source Stack
+>
+> Collects, processes, stores, and visualizes data for **1012 stock symbols** on the Vietnamese market (HOSE 403 + HNX 296 + UPCOM 300 + 9 Index + 4 Derivatives) in real-time,
+> using a Lambda Architecture combining a Batch Layer (Iceberg) and a Speed Layer (Redis).
+
+[![Spark](https://img.shields.io/badge/Spark-3.5.6-orange?logo=apachespark)](https://spark.apache.org/)
+[![Kafka](https://img.shields.io/badge/Kafka-KRaft-black?logo=apachekafka)](https://kafka.apache.org/)
+[![Iceberg](https://img.shields.io/badge/Iceberg-1.9.2-blue)](https://iceberg.apache.org/)
+[![Airflow](https://img.shields.io/badge/Airflow-2.10-teal?logo=apacheairflow)](https://airflow.apache.org/)
+[![Docker](https://img.shields.io/badge/Docker-13%2B_Services-blue?logo=docker)](https://docs.docker.com/compose/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)](https://reactjs.org/)
+
+---
+
+## System Architecture
+
+```
+                              VVS Data Lakehouse — Lambda Architecture
+  ┌─────────────────────────────────────────────────────────────────────────────────────┐
+  │                                                                                     │
+  │  ┌──────────┐    WebSocket     ┌───────────┐      Avro       ┌──────────┐          │
+  │  │   DNSE   │ ──────────────► │  Producer  │ ─────────────► │  Kafka   │          │
+  │  │ Exchange │    (real-time)   │  (Python)  │  (6 topics)    │  (KRaft) │          │
+  │  └──────────┘                  └───────────┘  Wire Format    └────┬─────┘          │
+  │                                                                    │                │
+  │                     ┌──────────────────────────────────────────────┤                │
+  │                     │                                              │                │
+  │    ┌────────────────▼───────────┐                  ┌──────────────▼──────────┐     │
+  │    │     SPEED LAYER            │                  │     BATCH LAYER         │     │
+  │    │  Spark Structured Streaming│                  │  Spark Batch Jobs       │     │
+  │    │  ┌──────────────────────┐  │                  │  ┌───────────────────┐  │     │
+  │    │  │ vnstock_stream_to_   │  │                  │  │ vnstock_bronze_   │  │     │
+  │    │  │ redis.py             │  │                  │  │ stream.py         │  │     │
+  │    │  │ (foreachBatch → Redis)│  │                  │  │ (Kafka → Iceberg) │  │     │
+  │    │  └──────────┬───────────┘  │                  │  └────────┬──────────┘  │     │
+  │    └─────────────│──────────────┘                  └───────────│─────────────┘     │
+  │                  │                                             │                    │
+  │                  ▼                                             ▼                    │
+  │    ┌─────────────────┐                        ┌────────────────────────────┐       │
+  │    │     Redis        │                        │     Apache Iceberg         │       │
+  │    │  tick/quote/     │                        │     (on MinIO S3)          │       │
+  │    │  secdef/expected │                        │  ┌────────┬────────┐      │       │
+  │    └────────┬────────┘                        │  │ Bronze │ Silver │ Gold │       │
+  │             │                                  │  │ (raw)  │(dedup) │(agg) │       │
+  │             │                                  │  └────────┴────────┴──────┘       │
+  │             │                                  └──────────────┬─────────────┘       │
+  │             │                                                 │                     │
+  │    ┌────────▼────────┐       /api/realtime         ┌─────────▼──────────┐          │
+  │    │    FastAPI       │◄──────────────────────────►│      Trino          │          │
+  │    │    Backend       │       /api/history          │   (SQL Engine)      │          │
+  │    │  + WebSocket     │◄───────────────────────────│  Iceberg Connector  │          │
+  │    └────────┬────────┘                             └────────────────────┘          │
+  │             │                                                                       │
+  │    ┌────────▼────────┐                     ┌──────────────────────────────┐         │
+  │    │   React 18       │                     │       Airflow                │         │
+  │    │   Lightweight    │                     │  ┌──────────────────────┐   │         │
+  │    │   Charts 5       │                     │  │ Bronze Kafka Ingest  │   │         │
+  │    │  (TradingView)   │                     │  │ Backfill 1m / 1d    │   │         │
+  │    └─────────────────┘                     │  │ Compact Bronze→Silver│   │         │
+  │                                             │  │ News Crawler         │   │         │
+  │    ┌─────────────────────────────────┐     │  └──────────────────────┘   │         │
+  │    │  MONITORING                      │     └──────────────────────────────┘         │
+  │    │  Prometheus → Grafana            │                                              │
+  │    │  Promtail  → Loki                │                                              │
+  │    │  cAdvisor + Node Exporter        │                                              │
+  │    └─────────────────────────────────┘                                              │
+  │                                                                                     │
+  └─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow Summary
+
+| Layer | Component | Vai trò |
+|-------|-----------|---------|
+| **Ingestion** | DNSE WebSocket → Producer → Kafka | Thu thập real-time 6 topics (OHLC Stock/Derivative/Index, Quote, ExpectedPrice, SecurityDef) |
+| **Speed Layer** | Spark Streaming → Redis | Cập nhật giá real-time cho Frontend (< 1s latency) |
+| **Batch Layer** | Spark Batch → Iceberg Bronze/Silver/Gold | Lưu trữ raw data vào Iceberg tables trên MinIO |
+| **Serving Layer** | FastAPI + Trino + Redis | API phục vụ historical data từ Iceberg, real-time từ Redis |
+| **Presentation** | React + Lightweight Charts + WebSocket | TradingView-style charting với hybrid History + Realtime |
+| **Orchestration** | Airflow (CeleryExecutor) | Schedule Bronze ingest, backfill, compaction, news crawl |
+| **Monitoring** | Prometheus + Grafana + Loki + Promtail | Giám sát toàn bộ pipeline: Kafka lag, RAM, CPU, logs |
+
+---
+
+## Tech Stack
+
+| Category | Technology | Version | Vai trò |
+|----------|-----------|---------|---------|
+| **Message Broker** | Apache Kafka (KRaft) | 3.5.x | 6-topic message bus, no ZooKeeper |
+| **Schema Registry** | Confluent Schema Registry | 7.x | Avro schema management |
+| **Stream Processing** | Apache Spark Structured Streaming | 3.5.6 | Real-time ETL (Kafka → Redis, Kafka → Iceberg) |
+| **Table Format** | Apache Iceberg | 1.9.2 | ACID transactions trên S3, time-travel, schema evolution |
+| **Object Storage** | MinIO | Latest | S3-compatible, lưu trữ Iceberg data + metadata |
+| **Query Engine** | Trino | Latest | Distributed SQL trên Iceberg tables |
+| **Orchestration** | Apache Airflow (CeleryExecutor) | 2.10.x | DAG scheduling, backfill, compaction |
+| **Cache / RT Store** | Redis | 7.2 | Real-time tick/quote/secdef serving |
+| **API Backend** | FastAPI + Uvicorn | 0.115+ | REST + WebSocket, 2 workers, GZip |
+| **Frontend** | React 18 + Lightweight Charts 5 | 18.3.1 | TradingView-style UI, SMA/EMA indicators |
+| **Monitoring** | Prometheus + Grafana + Loki + Promtail | Latest | Metrics + Dashboards + Logs |
+| **Serialization** | Apache Avro (Confluent Wire Format) | fastavro 1.9.7 | Binary serialization: `[0x00][4B schema-id][avro]` |
+| **IAM** | Keycloak | 23.0.7 | OIDC/SAML identity provider |
+| **Secrets** | HashiCorp Vault | 1.15 | KV2 secret store, auto-inject vào containers |
+| **Containerization** | Docker Compose v2 | Latest | 40+ services, profiles-based deployment |
+
+---
+
+## Symbol Coverage — 1012 mã chứng khoán
+
+| Sàn | Số lượng | Mô tả |
+|-----|----------|-------|
+| **HOSE** | 403 | Full — Toàn bộ cổ phiếu sàn HSX (VN30 + Midcap + Small) |
+| **HNX** | 296 | Full — Toàn bộ cổ phiếu sàn Hà Nội |
+| **UPCOM** | 300 | 300 mã tiêu biểu (từ tổng 743 mã) |
+| **Index** | 9 | VNINDEX, VN30, HNX, HNX30, UPCOM, VN100, VNMID, VNSML, VNALL |
+| **Derivatives** | 4 | VN30F Q2-Q3 2026 (VN30F2604/05/06/09) |
+| **Tổng** | **1012** | |
+
+### Data Retention & Aggregation
+
+| Timeframe | Retention | Bảng Iceberg | Ghi chú |
+|-----------|-----------|-------------|---------|
+| **1m** (1 phút) | 90 ngày | `iceberg.bronze.vnstock_ohlc_1m` | Raw OHLCV |
+| **5m** | 90 ngày | `iceberg.bronze.vnstock_ohlc_5m` | Aggregated từ 1m |
+| **15m** | 90 ngày | `iceberg.bronze.vnstock_ohlc_15m` | Aggregated từ 1m |
+| **30m** | 90 ngày | `iceberg.bronze.vnstock_ohlc_30m` | Aggregated từ 1m |
+| **1h** | 90 ngày | `iceberg.bronze.vnstock_ohlc_1h` | Aggregated từ 1m |
+| **4h** | 90 ngày | `iceberg.bronze.vnstock_ohlc_4h` | Aggregated từ 1m |
+| **1D** (ngày) | Từ 2015 | `iceberg.gold.vnstock_ohlc_1d` | Daily OHLCV, partitioned by `trade_date` |
+
+### PySpark Jobs
+
+| Job | File | Chức năng |
+|-----|------|----------|
+| **Realtime Stream** | `streaming.py` | Kafka → Redis (tick/quote/secdef/expected), trigger 5-10s |
+| **Batch Bronze** | `batch.py` | Kafka → Iceberg Bronze (6 topics), AvailableNow trigger |
+| **Backfill 1m** | `backfill_1m.py` | vnstock API → 1m + aggregate 5m/15m/30m/1h/4h |
+| **Backfill 1D** | `backfill_1d.py` | vnstock API → Gold daily (từ 2015) |
+| **Compact** | `compact.py` | Bronze → Silver (dedup, repartition by symbol) |
+| **News** | `news_crawler.py` | CafeF/Vietstock/VnEconomy → Redis |
+
+---
+
+## Quick Start — Hướng Dẫn Chi Tiết
+
+### Prerequisites (Yêu cầu)
+
+| Yêu cầu | Chi tiết |
+|----------|----------|
+| **Docker Desktop** | Phiên bản mới nhất (hoặc Docker Engine 24+ với Compose v2) |
+| **RAM** | Tối thiểu **16GB** (khuyến nghị **32GB** để chạy đầy đủ) |
+| **Disk** | Tối thiểu **50GB** trống (Iceberg data + Docker images) |
+| **OS** | Windows 10/11 (WSL2), macOS, hoặc Linux |
+| **DNSE API Key** | Đăng ký tại [dnse.com.vn](https://dnse.com.vn) (miễn phí) |
+
+### Step 1: Clone & Cấu hình Environment
+
+```powershell
+# Clone repository
+git clone <repo-url>
+cd lakehouse-oss-vuong.ngo
+
+# Copy environment file mẫu
+cp .env.example .env
+
+# Mở .env và chỉnh sửa:
+#   DNSE_API_KEY=<your-api-key>
+#   VNSTOCK_SYMBOLS đã cấu hình sẵn 1012 mã (HOSE 403 + HNX 296 + UPCOM 300 + Index + Derivatives)
+```
+
+### Step 2: Khởi động toàn bộ VVS Stack (1 lệnh duy nhất)
+
+```powershell
+# Khởi động ALL: Kafka, Spark, MinIO, Redis, Trino, Postgres, Schema Registry, Producer, API, Frontend
+docker compose --profile vnstock up -d
+
+# Kiểm tra tất cả 13 services đã running:
+docker compose --profile vnstock ps
+
+# ⏳ Đợi ~60s để Kafka + Schema Registry + Hive Metastore khởi tạo xong
+# Kiểm tra Kafka ready:
+docker compose logs kafka 2>&1 | Select-String "started"
+
+# Kiểm tra MinIO ready:
+docker compose logs minio 2>&1 | Select-String "API"
+```
+
+**Verify Core Services:**
+
+| Service | Check URL | Expected |
+|---------|-----------|----------|
+| MinIO Console | http://localhost:9001 | Login page (minio / minio123) |
+| Kafka | `docker compose exec kafka kafka-topics.sh --bootstrap-server localhost:9092 --list` | Empty list (OK) |
+| Trino | http://localhost:8090 | Trino UI |
+| Spark Master | http://localhost:8088 | Spark Master UI, 2 workers |
+
+### Step 3: Verify Pipeline hoạt động
+
+```powershell
+# Kiểm tra Producer đang nhận data từ DNSE:
+docker compose logs vnstock-producer --tail 20
+# Expected: "All 1012 symbols subscribed (4 functions each)"
+
+# Kiểm tra API healthy:
+curl http://localhost:8060/api/health
+# Expected: {"status":"ok","checks":{"redis":"ok","trino":"ok"}}
+
+# Kiểm tra Frontend:
+# Mở browser → http://localhost:3080
+```
+
+### Step 4: Khởi động Airflow (Orchestration)
+
+```powershell
+# Khởi động Airflow (API server + Scheduler + Worker + Triggerer)
+docker compose --profile airflow up -d
+
+# ⏳ Đợi ~90s để Airflow DB migration + init hoàn tất
+# Kiểm tra:
+docker compose logs airflow-apiserver --tail 10
+# Expected: "Listening at: http://0.0.0.0:8080"
+```
+
+**Truy cập Airflow UI:** http://localhost:8085 (admin / admin)
+
+### Step 5: Chạy Backfill Dữ Liệu Lịch Sử
+
+```powershell
+# ═══ Option A: Backfill 1-minute (90 ngày gần nhất) ═══
+# Vào Airflow UI → DAGs → vnstock_backfill_1m → Trigger with config:
+# {
+#   "symbols": "VCB,HPG,FPT,VIC,VHM,TCB,MBB,ACB",
+#   "days": 90,
+#   "delay": 36
+# }
+# ⏳ Mỗi symbol mất ~2-5 phút. 8 symbols × 5min = ~40 phút.
+# Job sẽ tự aggregate ra 5m/15m/30m/1h/4h.
+
+# ═══ Option B: Backfill Daily (từ 2015) ═══
+# Vào Airflow UI → DAGs → vnstock_backfill_daily → Trigger
+# ⏳ ~5-10 phút cho tất cả symbols (TCBS API nhanh hơn)
+
+# ═══ Option C: Quick test chỉ 1 symbol ═══
+# Trigger vnstock_backfill_1m với config:
+# {"symbols": "VCB", "days": 7, "delay": 36}
+# ⏳ ~1 phút
+
+# ═══ Sau khi backfill xong, verify data: ═══
+# Vào Trino (http://localhost:8090), chạy SQL:
+# SELECT count(*) FROM iceberg.bronze.vnstock_ohlc_1m WHERE symbol='VCB';
+# SELECT count(*) FROM iceberg.gold.vnstock_ohlc_1d WHERE symbol='VCB';
+```
+
+### Step 6: Khởi động Monitoring
+
+```powershell
+# Khởi động Prometheus + Grafana + Loki + Promtail + cAdvisor + Node Exporter
+docker compose --profile monitoring up -d
+
+# Verify:
+docker compose --profile monitoring ps
+```
+
+### Step 7: Mở Dashboard & Kiểm tra
+
+| Service | URL | Credentials | Mô tả |
+|---------|-----|-------------|--------|
+| **VVS Dashboard** | http://localhost:3080 | — | Frontend chính: biểu đồ nến, watchlist, sổ lệnh |
+| **FastAPI Docs** | http://localhost:8060/api/docs | — | Swagger UI, test API trực tiếp |
+| **Grafana** | http://localhost:3000 | admin / admin | Dashboard monitoring |
+| **Airflow** | http://localhost:8085 | admin / admin | DAG management, trigger backfill |
+| **MinIO Console** | http://localhost:9001 | minio / minio123 | Xem Iceberg data files trên S3 |
+| **Trino** | http://localhost:8090 | — | SQL trên Iceberg tables |
+| **Spark Master** | http://localhost:8088 | — | Spark cluster status |
+
+### Quick Verify Script (chạy 1 lần để test end-to-end)
+
+```powershell
+# 1. Check tất cả containers đang chạy
+docker compose --profile core --profile vnstock --profile monitoring ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+
+# 2. Check Kafka topics đã được tạo
+docker compose exec kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+# 3. Check Redis có data realtime
+docker compose exec redis redis-cli KEYS "vnstock:tick:*"
+
+# 4. Check API trả về data
+curl -s http://localhost:8060/api/realtime?symbol=VCB | python -m json.tool
+
+# 5. Check Iceberg tables (nếu đã backfill)
+docker compose exec trino trino --execute "SHOW TABLES FROM iceberg.bronze"
+```
+
+---
+
+## Monitoring Guide
+
+### Dashboard Panels (20 panels)
+
+Truy cập **Grafana** → Dashboard → **VNStock Data Lakehouse — Overview**
+
+| Section | Panel | Ý nghĩa khi demo |
+|---------|-------|-------------------|
+| **Host Metrics** | Host RAM Usage | RAM used vs total — đảm bảo < 80% |
+| | CPU % Gauge | Current CPU load |
+| | RAM % Gauge | Nhanh chóng thấy tải RAM |
+| | Disk % Gauge | Đảm bảo disk không đầy |
+| | Network I/O | RX/TX bandwidth |
+| **Kafka Pipeline** | Consumer Group Lag | **Lag = 0** → Spark đuổi kịp WebSocket ⭐ |
+| | Messages/sec per Topic | Throughput 6 topics (peak giờ giao dịch ~500 msg/s) |
+| **Container Resources** | Container Memory Top 10 | Phát hiện container ngốn RAM |
+| | Container CPU | CPU usage vnstock/kafka/spark/redis/trino |
+| **Spark & Serving** | Spark Workers | = 2 → cluster healthy |
+| | Spark Active Apps | Streaming jobs đang chạy |
+| | Redis Memory | < 50MB cho ~175 mã → rất hiệu quả |
+| | Container Count | ~20-40 containers running |
+| | Uptime | Host uptime |
+| | Trino Active Queries | Số query đang chạy |
+| **Logs** | Pipeline Logs (Loki) | Real-time logs Producer, Spark, API, Kafka, Airflow |
+
+### Log Queries (Grafana → Explore → Loki)
+
+```logql
+# Xem lỗi Producer
+{job="vnstock-producer"} |~ "ERROR|error"
+
+# Xem Spark batch triggers
+{job="spark"} |~ "batch|trigger|commit"
+
+# Xem API requests
+{job="vnstock-api"} |~ "GET|POST|health"
+
+# Xem tất cả ERROR trong pipeline
+{job=~"vnstock-producer|spark|vnstock-api|kafka"} |~ "ERROR"
+```
+
+---
+
+## Chỉ Số Show-Off Khi Báo Cáo
+
+### Architecture Metrics
+
+| Chỉ số | Giá trị | Ý nghĩa |
+|--------|---------|---------|
+| **Số Docker services** | 40+ | Full enterprise stack, không dùng managed service |
+| **Kafka topics** | 6 | Thu thập đầy đủ: OHLC (3), Quote, ExpectedPrice, SecurityDef |
+| **Avro schemas** | 6 | Type-safe serialization, schema evolution support |
+| **Iceberg layers** | 3 (Bronze/Silver/Gold) | Medallion architecture chuẩn Data Lakehouse |
+| **Airflow DAGs** | 5 | Tự động hóa toàn bộ pipeline lifecycle |
+| **Spark jobs** | 6 | Streaming + Batch + Backfill + Compact + News |
+| **Supported symbols** | 175+ | Toàn bộ mã trên HOSE + HNX + phái sinh |
+| **API endpoints** | 8 | REST + WebSocket, Swagger docs |
+| **Frontend indicators** | SMA 20, EMA 50 | Technical analysis trên TradingView-style chart |
+
+### Performance Metrics (khi demo)
+
+| Chỉ số | Giá trị mong đợi | Cách đo |
+|--------|-------------------|---------|
+| **Kafka Consumer Lag** | = 0 | Grafana → Consumer Group Lag panel |
+| **End-to-end latency** | < 2 giây | DNSE WebSocket → Producer → Kafka → Spark → Redis → Frontend |
+| **RAM Usage** | < 20 GB / 32 GB | Grafana → RAM % Gauge (< 65%) |
+| **Spark Workers** | 2 active | Grafana → Spark Workers stat |
+| **API Response time** | < 200ms (history), < 50ms (realtime) | FastAPI Swagger → Try it out |
+| **WS update rate** | 1 tick/giây per symbol | Browser DevTools → WS tab |
+| **Backfill 1m 7 ngày** | ~60s per symbol | Airflow task duration |
+| **Backfill daily từ 2015** | ~5 phút all symbols | Airflow DAG duration |
+
+### Talking Points cho báo cáo
+
+1. **"Lambda Architecture đầy đủ"** — Speed Layer (Spark Streaming → Redis) + Batch Layer (Spark Batch → Iceberg) + Serving Layer (Trino + Redis → FastAPI)
+2. **"Avro Confluent Wire Format"** — binary serialization có schema registry, không phải JSON. Tiết kiệm bandwidth 5-10x.
+3. **"Iceberg ACID trên S3"** — Time-travel, schema evolution, partition pruning. Query 10 năm data trong seconds.
+4. **"Zero-lag streaming"** — Consumer Lag = 0 trên Grafana chứng minh Spark Streaming xử lý kịp real-time.
+5. **"TradingView-grade UI"** — Lightweight Charts 5, SMA/EMA, WebSocket bidirectional (đổi mã không disconnect).
+6. **"Full Observability"** — Prometheus metrics + Grafana dashboards + Loki logs, tất cả auto-provisioned.
+7. **"32GB-optimized"** — Mỗi container có `mem_limit` trong docker-compose, tổng ~19GB, còn 13GB cho OS.
+
+---
+
+## Resource Configuration (32GB RAM)
+
+Toàn bộ container đều có `deploy.resources.limits.memory` trong docker-compose.yml:
+
+| Service Group | Allocated | Services |
+|---------------|-----------|----------|
+| **Kafka + Schema Registry** | ~1.9 GB | kafka (1.5G), schema-registry (384M) |
+| **Spark Cluster** | ~5 GB | master (1G), worker-1 (2G), worker-2 (2G) |
+| **Airflow** | ~4.5 GB | apiserver (768M), scheduler (1G), worker (1.5G), triggerer (512M), dag-processor (768M) |
+| **Storage & Query** | ~6.5 GB | MinIO (1G), Trino (4G), Postgres (1.5G) |
+| **VNStock App** | ~768 MB | producer (256M), api (384M), frontend (128M) |
+| **Monitoring** | ~1.2 GB | prometheus (512M), grafana (256M), loki (256M), promtail (128M) |
+| **Redis** | 256 MB | real-time serving |
+| **Total** | **~20 GB** | Còn **~12GB** cho OS + Docker overhead + buffer |
+
+---
+
+## Project Structure
+
+```
+lakehouse-oss-vuong.ngo/
+├── docker-compose.yml             # ~3000 dòng, 40+ services, profile-based
+├── .env                           # Environment variables (DNSE_API_KEY, symbols...)
+│
+├── infra/
+│   ├── vnstock/                   # ═══ DNSE WebSocket Producer ═══
+│   │   ├── Dockerfile
+│   │   ├── producer.py            # Avro serialization → 6 Kafka topics
+│   │   └── requirements.txt       # fastavro, websocket-client, confluent-kafka
+│   │
+│   ├── vnstock-api/               # ═══ FastAPI Backend ═══
+│   │   ├── Dockerfile             # Non-root, --limit-max-requests=10000
+│   │   ├── requirements.txt
+│   │   └── app/
+│   │       ├── main.py            # Startup health checks, GZipMiddleware
+│   │       ├── config.py          # Environment-based config
+│   │       ├── connections.py     # Redis async pool + Trino sync factory
+│   │       └── routers/
+│   │           ├── history.py     # GET /api/history — Iceberg via Trino
+│   │           ├── realtime.py    # GET /api/realtime — Redis (tick/quote/secdef)
+│   │           ├── ws.py          # WS /api/ws/stream — Bidirectional protocol
+│   │           ├── news.py        # GET /api/news — Redis sorted set
+│   │           └── symbols.py     # GET /api/symbols — Config-based
+│   │
+│   ├── vnstock-frontend/          # ═══ React Frontend ═══
+│   │   ├── Dockerfile             # Multi-stage: node:20 → nginx:1.25
+│   │   ├── nginx.conf             # Reverse proxy + gzip + WebSocket
+│   │   ├── package.json           # react 18, lightweight-charts 5, tailwind 3.4
+│   │   └── src/
+│   │       ├── App.js             # 3-column: Watchlist | Chart | QuotePanel
+│   │       ├── components/
+│   │       │   ├── CandlestickChart.js  # TradingView-style, SMA/EMA, hybrid data
+│   │       │   ├── QuotePanel.js        # Bid/Ask depth, SecDef (Trần/TC/Sàn)
+│   │       │   ├── Watchlist.js         # Symbol list + search + % change
+│   │       │   └── NewsTicker.js        # Market news with relative timestamps
+│   │       └── services/
+│   │           └── api.js         # Bidirectional WS, auto-reconnect
+│   │
+│   ├── airflow/
+│   │   ├── dags/
+│   │   │   ├── vnstock_bronze_dag.py      # 6-topic Kafka → Bronze Iceberg
+│   │   │   ├── vnstock_backfill_news_dag.py  # Backfill + Compact + News
+│   │   │   └── _spark_common.py           # Shared Spark config
+│   │   └── processing/spark/jobs/vnstock/
+│   │       ├── vnstock_bronze_stream.py   # Kafka Avro → Iceberg Bronze
+│   │       ├── vnstock_stream_to_redis.py # Kafka Avro → Redis (Speed Layer)
+│   │       ├── vnstock_backfill_1m.py     # vnstock3 → 1m + agg 5m/15m/30m/1h/4h
+│   │       ├── vnstock_backfill_1d.py     # vnstock3 TCBS → daily from 2015
+│   │       ├── vnstock_compact.py         # Bronze → Silver compaction
+│   │       └── vnstock_news_crawler.py    # CafeF/Vietstock/VnEconomy → Redis
+│   │
+│   ├── schema-registry/schemas/   # 6 Avro schemas (.avsc)
+│   │   ├── ohlc_stock.avsc        # {symbol, time, open, high, low, close, volume, resolution}
+│   │   ├── ohlc_derivative.avsc
+│   │   ├── ohlc_index.avsc
+│   │   ├── quote.avsc             # {symbol, bid[10], offer[10], totalBid, totalOffer}
+│   │   ├── expected_price.avsc    # {symbol, expectedTradePrice, expectedTradeQuantity}
+│   │   └── security_def.avsc      # {symbol, basicPrice, ceilingPrice, floorPrice}
+│   │
+│   ├── prometheus/config/         # prometheus.yml (15 scrape targets) + alert-rules.yml
+│   ├── grafana/config/            # grafana.ini + 5 dashboards (auto-provisioned)
+│   ├── loki/config/               # loki-config.yml (TSDB, 7-day retention)
+│   └── promtail/config/           # promtail-config.yml (6 job targets)
+│
+└── README.md                      # This file
+```
+
+---
+
+## Avro Serialization Pipeline
+
+```
+Producer (Python)                              Spark Consumer (PySpark)
+┌──────────────────────┐                      ┌──────────────────────────────┐
+│ schema = fastavro.    │   Confluent          │ from pyspark.sql.avro import │
+│   parse_schema(avsc)  │   Wire Format        │   from_avro                  │
+│                       │                      │                              │
+│ buf = BytesIO()       │   5-byte header      │ df = spark.readStream        │
+│ buf.write(b'\x00')    │   + avro binary      │   .format("kafka")           │
+│ buf.write(schema_id   │ ─────────────────►   │   .load()                    │
+│   .to_bytes(4,'big')) │                      │                              │
+│ fastavro.schemaless_  │                      │ parsed = df.select(          │
+│   writer(buf, schema, │                      │   from_avro(                 │
+│   record)             │                      │     substring(col("value"),  │
+│                       │                      │       6, length - 5),        │
+│ producer.produce(     │                      │     avro_schema_json         │
+│   topic, buf.getvalue │                      │   ).alias("data")            │
+│ )                     │                      │ )                            │
+└──────────────────────┘                      └──────────────────────────────┘
+```
+
+**6 Kafka Topics:** `ohlc_stock`, `ohlc_derivative`, `ohlc_index`, `quote`, `expected_price`, `security_def`
+
+---
+
+## API Reference
+
+| Method | Endpoint | Params | Source | Mô tả |
+|--------|----------|--------|--------|-------|
+| `GET` | `/api/history` | `symbol`, `interval`, `limit`, `end_time` | Iceberg via Trino | Nến lịch sử (7 timeframes) |
+| `GET` | `/api/realtime` | `symbol` (optional) | Redis | Tick real-time (1 hoặc tất cả) |
+| `GET` | `/api/realtime/quote` | `symbol` | Redis | Bid/Ask depth (10 levels) |
+| `GET` | `/api/realtime/secdef` | `symbol` | Redis | Trần/Sàn/Tham chiếu |
+| `GET` | `/api/realtime/expected` | `symbol` | Redis | Giá ATO/ATC dự kiến |
+| `GET` | `/api/realtime/summary` | `symbol` | Redis (pipeline) | Tổng hợp tick+quote+secdef+expected |
+| `GET` | `/api/news` | `source`, `limit` | Redis sorted set | Tin thị trường |
+| `GET` | `/api/symbols` | — | Config | Danh sách mã |
+| `WS` | `/api/ws/stream` | `symbol` | Redis (poll 1s) | Bidirectional: subscribe, ping/pong |
+| `GET` | `/api/health` | — | Redis + Trino | Health check |
+
+### WebSocket Protocol
+
+```
+Server → Client:
+  {"type": "tick",  "data": {symbol, time, open, high, low, close, volume}}
+  {"type": "quote", "data": {symbol, bid[], offer[], ...}}
+  {"type": "ping"}
+
+Client → Server:
+  {"type": "subscribe", "symbol": "HPG"}   // đổi mã không cần reconnect
+  {"type": "pong"}                          // heartbeat reply
+```
+
+---
+
+## Airflow DAGs
+
+| DAG ID | Schedule | Mô tả |
+|--------|----------|-------|
+| `vnstock_bronze_kafka_stream` | Manual | 6-topic Kafka → Bronze Iceberg + stream-to-Redis |
+| `vnstock_backfill_daily` | `0 16 * * 1-5` | vnstock3 TCBS daily → Gold (từ 2015) |
+| `vnstock_backfill_1m` | Manual | vnstock3/DNSE 1m → Bronze + aggregate 5m/15m/30m/1h/4h |
+| `vnstock_compact_bronze_to_silver` | `0 17 * * 1-5` | Dedup + repartition by symbol |
+| `vnstock_news_crawler` | `*/30 8-16 * * 1-5` | CafeF/Vietstock/VnEconomy → Redis |
+
+---
+
+## Port Mapping
+
+| Service | Port | Credentials | Mô tả |
+|---------|------|-------------|-------|
+| **VVS Dashboard** | **3080** | — | React Frontend (TradingView-style) |
+| **VVS API** | **8060** | — | FastAPI + Swagger (/api/docs) |
+| **Grafana** | **3000** | admin / admin | Monitoring dashboards |
+| **Airflow** | **8085** | admin / admin | DAG management |
+| Prometheus | 9094 | — | Metrics engine |
+| Loki | 3100 | — | Log aggregation |
+| MinIO Console | 9001 | minio / minio123 | Object storage UI |
+| MinIO API | 9000 | — | S3-compatible |
+| Kafka | 9092 | — | Message broker |
+| Trino | 8090 | — | SQL engine |
+| Spark Master | 8088 | — | Cluster UI |
+| Schema Registry | 8081 | — | Avro schemas |
+| PostgreSQL | 15432 | admin / admin | Database |
+| Keycloak | 8084 | — | IAM |
+| Vault | 8200 | — | Secrets (token: dev-root-token) |
+| Redis | 6379 | — | Cache (internal only) |
+
+---
+
+## Docker Compose Profiles
+
+| Profile | Lệnh | Services (count) | Mô tả |
+|---------|-------|-------------------|-------|
+| **vnstock** | `docker compose --profile vnstock up -d` | 13 | Full VVS stack: Producer + API + Frontend + core infra |
+| **monitoring** | `docker compose --profile monitoring up -d` | 8 | Prometheus + Grafana + Loki + Promtail + Exporters |
+| **airflow** | `docker compose --profile airflow up -d` | 6 | Airflow: Scheduler + Worker + Triggerer + API + DAG Processor |
+| **core** | `docker compose --profile core up -d` | 20+ | Full infrastructure (ALL services) |
+| **datahub** | `docker compose --profile datahub up -d` | 8 | DataHub metadata catalog |
+
+---
+
+## Initial Data Preparation (Backfill)
+
+Sau khi hệ thống đã khởi động thành công, cần chạy backfill để có dữ liệu lịch sử cho chart.
+
+### Bước 1: Backfill nến 1 phút (90 ngày gần nhất)
+
+Chạy từ **Airflow UI** (http://localhost:8085):
+1. Mở DAG `vnstock_backfill_1m`
+2. Click **Trigger DAG w/ config** → nhập:
+   ```json
+   {"symbols": "VCB,FPT,HPG,TCB,MSN", "days": 90, "delay": 36}
+   ```
+3. Click **Trigger**
+
+Hoặc chạy trực tiếp bằng `spark-submit`:
+
+```bash
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  --deploy-mode client \
+  --conf "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions" \
+  --conf "spark.sql.catalog.iceberg=org.apache.iceberg.spark.SparkCatalog" \
+  --conf "spark.sql.catalog.iceberg.type=rest" \
+  --conf "spark.sql.catalog.iceberg.uri=http://hive-metastore:9001/iceberg" \
+  --conf "spark.sql.catalog.iceberg.warehouse=s3a://iceberg/warehouse" \
+  --conf "spark.sql.catalog.iceberg.s3.endpoint=http://minio:9000" \
+  --conf "spark.sql.catalog.iceberg.s3.path-style-access=true" \
+  --conf "spark.sql.catalog.iceberg.s3.region=us-east-1" \
+  --conf "spark.hadoop.fs.s3a.endpoint=http://minio:9000" \
+  --conf "spark.hadoop.fs.s3a.path.style.access=true" \
+  --conf "spark.hadoop.fs.s3a.connection.ssl.enabled=false" \
+  --conf "spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider" \
+  --conf "spark.sql.defaultCatalog=iceberg" \
+  --conf "spark.executor.memory=1G" \
+  --conf "spark.executor.instances=2" \
+  --jars /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.9.2.jar,/opt/spark/jars/iceberg-aws-bundle-1.9.2.jar,/opt/spark/jars/hadoop-aws-3.3.4.jar,/opt/spark/jars/aws-java-sdk-bundle-1.12.791.jar \
+  /opt/spark/jobs/vnstock/vnstock_backfill_1m.py \
+  --symbols VCB,FPT,HPG,TCB,MSN \
+  --days 90 \
+  --delay 36
+```
+
+> **Lưu ý:** vnstock3 gọi API TCBS/VCI — đặt `--delay 36` để tránh bị block IP.
+> Thời gian ước tính: ~3 phút/mã × 5 mã = ~15 phút.
+
+### Bước 2: Backfill nến ngày (10 năm, từ 2015)
+
+```bash
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  --deploy-mode client \
+  --conf "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions" \
+  --conf "spark.sql.catalog.iceberg=org.apache.iceberg.spark.SparkCatalog" \
+  --conf "spark.sql.catalog.iceberg.type=rest" \
+  --conf "spark.sql.catalog.iceberg.uri=http://hive-metastore:9001/iceberg" \
+  --conf "spark.sql.catalog.iceberg.warehouse=s3a://iceberg/warehouse" \
+  --conf "spark.sql.catalog.iceberg.s3.endpoint=http://minio:9000" \
+  --conf "spark.sql.catalog.iceberg.s3.path-style-access=true" \
+  --conf "spark.sql.catalog.iceberg.s3.region=us-east-1" \
+  --conf "spark.hadoop.fs.s3a.endpoint=http://minio:9000" \
+  --conf "spark.hadoop.fs.s3a.path.style.access=true" \
+  --conf "spark.hadoop.fs.s3a.connection.ssl.enabled=false" \
+  --conf "spark.hadoop.fs.s3a.aws.credentials.provider=org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider" \
+  --conf "spark.sql.defaultCatalog=iceberg" \
+  --conf "spark.executor.memory=1G" \
+  --conf "spark.executor.instances=2" \
+  --jars /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.9.2.jar,/opt/spark/jars/iceberg-aws-bundle-1.9.2.jar,/opt/spark/jars/hadoop-aws-3.3.4.jar,/opt/spark/jars/aws-java-sdk-bundle-1.12.791.jar \
+  /opt/spark/jobs/vnstock/vnstock_backfill_1d.py \
+  --symbols VCB,FPT,HPG,TCB,MSN \
+  --start-date 2015-01-01
+```
+
+### Bước 3: Xác nhận dữ liệu qua Trino SQL
+
+Kết nối Trino CLI và chạy các query kiểm tra:
+
+```bash
+docker exec -it trino trino --server localhost:8080 --user admin
+```
+
+```sql
+-- Kiểm tra 1m data
+SELECT symbol, count(*) AS rows, 
+       from_unixtime(min(time)/1000) AS earliest,
+       from_unixtime(max(time)/1000) AS latest
+FROM iceberg.bronze.vnstock_ohlc_1m
+WHERE symbol IN ('VCB','FPT','HPG','TCB','MSN')
+GROUP BY symbol
+ORDER BY symbol;
+
+-- Kiểm tra daily data
+SELECT symbol, count(*) AS rows,
+       from_unixtime(min(time)/1000) AS earliest,
+       from_unixtime(max(time)/1000) AS latest
+FROM iceberg.gold.vnstock_ohlc_1d
+WHERE symbol IN ('VCB','FPT','HPG','TCB','MSN')
+GROUP BY symbol
+ORDER BY symbol;
+
+-- Kiểm tra aggregated timeframes
+SELECT 'bronze.vnstock_ohlc_5m' AS tbl, count(*) FROM iceberg.bronze.vnstock_ohlc_5m
+UNION ALL
+SELECT 'bronze.vnstock_ohlc_15m', count(*) FROM iceberg.bronze.vnstock_ohlc_15m
+UNION ALL
+SELECT 'bronze.vnstock_ohlc_30m', count(*) FROM iceberg.bronze.vnstock_ohlc_30m
+UNION ALL
+SELECT 'bronze.vnstock_ohlc_1h', count(*) FROM iceberg.bronze.vnstock_ohlc_1h
+UNION ALL
+SELECT 'bronze.vnstock_ohlc_4h', count(*) FROM iceberg.bronze.vnstock_ohlc_4h;
+
+-- Xem 5 nến gần nhất của VCB (1m) — dùng để demo cho sếp
+SELECT from_unixtime(time/1000) AS time_vn, open, high, low, close, volume
+FROM iceberg.bronze.vnstock_ohlc_1m
+WHERE symbol = 'VCB'
+ORDER BY time DESC
+LIMIT 5;
+```
+
+### Expected Output sau backfill
+
+| Table | Mỗi mã | Tổng 5 mã |
+|-------|---------|-----------|
+| `bronze.vnstock_ohlc_1m` | ~16,200 rows (90 ngày × 180 nến/ngày) | ~81,000 |
+| `bronze.vnstock_ohlc_5m` | ~3,240 | ~16,200 |
+| `bronze.vnstock_ohlc_15m` | ~1,080 | ~5,400 |
+| `bronze.vnstock_ohlc_30m` | ~540 | ~2,700 |
+| `bronze.vnstock_ohlc_1h` | ~270 | ~1,350 |
+| `bronze.vnstock_ohlc_4h` | ~68 | ~340 |
+| `gold.vnstock_ohlc_1d` | ~2,500 (10 năm) | ~12,500 |
+
+---
+
+## Troubleshooting
+
+| Vấn đề | Nguyên nhân | Giải pháp |
+|--------|-------------|-----------|
+| Container bị OOM killed | mem_limit quá thấp | Tăng memory trong docker-compose.yml |
+| Kafka topics trống | Producer chưa kết nối DNSE | Check `docker compose logs vnstock-producer` |
+| Trino query lỗi "TABLE_NOT_FOUND" | Chưa chạy backfill | Trigger DAG vnstock_backfill_1m trong Airflow |
+| Frontend hiện "Đang tải..." | API chưa sẵn sàng | Check `curl http://localhost:8060/api/health` |
+| Grafana không hiện data | Monitoring profile chưa start | `docker compose --profile monitoring up -d` |
+| Spark job failed | Thiếu memory cho worker | Tăng mem_limit của spark-worker trong compose |
+| WebSocket mất kết nối | nginx timeout | Frontend auto-reconnect sau 3 giây |
+
+---
+
+## License
+
+Internal Project — Lakehouse OSS Platform
+
+---
+
+*Built for the Vietnamese stock market with Lambda Architecture, 40+ open-source services, and zero cloud dependency.*
+
+---
+
+*Built for the Vietnamese stock market with Lambda Architecture, 40+ open-source services, and zero cloud dependency.*

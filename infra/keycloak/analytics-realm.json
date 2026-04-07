@@ -1,0 +1,249 @@
+{
+    "realm": "analytics",
+    "displayName": "Analytics Platform",
+    "enabled": true,
+    "sslRequired": "EXTERNAL",
+    "registrationAllowed": false,
+    "loginWithEmailAllowed": true,
+    "passwordPolicy": "length(8) and specialChars(1) and upperCase(1) and digits(1)",
+    "roles": {
+        "realm": [
+            {
+                "name": "superset-admin",
+                "description": "Full admin access to Superset"
+            },
+            {
+                "name": "superset-editor",
+                "description": "Create/edit charts and dashboards"
+            },
+            {
+                "name": "superset-viewer",
+                "description": "View-only access to dashboards"
+            },
+            {
+                "name": "analytics-user",
+                "description": "Basic analytics platform user"
+            }
+        ],
+        "client": {}
+    },
+    "groups": [
+        {
+            "name": "Superset Administrators",
+            "path": "/Superset Administrators",
+            "attributes": {},
+            "realmRoles": [
+                "superset-admin",
+                "analytics-user"
+            ],
+            "clientRoles": {}
+        },
+        {
+            "name": "Superset Editors",
+            "path": "/Superset Editors",
+            "attributes": {},
+            "realmRoles": [
+                "superset-editor",
+                "analytics-user"
+            ],
+            "clientRoles": {}
+        },
+        {
+            "name": "Superset Viewers",
+            "path": "/Superset Viewers",
+            "attributes": {},
+            "realmRoles": [
+                "superset-viewer",
+                "analytics-user"
+            ],
+            "clientRoles": {}
+        },
+        {
+            "name": "Analytics Team",
+            "path": "/Analytics Team",
+            "attributes": {},
+            "realmRoles": [],
+            "clientRoles": {}
+        },
+        {
+            "name": "Data Engineers",
+            "path": "/Data Engineers",
+            "attributes": {},
+            "realmRoles": [
+                "superset-editor",
+                "analytics-user"
+            ],
+            "clientRoles": {}
+        },
+        {
+            "name": "Data Analysts",
+            "path": "/Data Analysts",
+            "attributes": {},
+            "realmRoles": [
+                "superset-viewer",
+                "analytics-user"
+            ],
+            "clientRoles": {}
+        }
+    ],
+    "users": [
+        {
+            "username": "platform-admin",
+            "firstName": "Platform",
+            "lastName": "Administrator",
+            "email": "platform-admin@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "PlatformAdmin@123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "superset-admin",
+                "analytics-user"
+            ],
+            "groups": [
+                "Superset Administrators",
+                "Analytics Team"
+            ]
+        },
+        {
+            "username": "superset-admin",
+            "firstName": "Superset",
+            "lastName": "Administrator",
+            "email": "superset-admin@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "SupersetAdmin@123",
+                    "temporary": false
+                }
+            ],
+            "groups": [
+                "Superset Administrators",
+                "Analytics Team"
+            ]
+        },
+        {
+            "username": "superset-editor",
+            "firstName": "Superset",
+            "lastName": "Editor",
+            "email": "superset-editor@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "SupersetEditor@123",
+                    "temporary": false
+                }
+            ],
+            "groups": [
+                "Superset Editors",
+                "Analytics Team"
+            ]
+        },
+        {
+            "username": "superset-viewer",
+            "firstName": "Superset",
+            "lastName": "Viewer",
+            "email": "superset-viewer@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "SupersetViewer@123",
+                    "temporary": false
+                }
+            ],
+            "groups": [
+                "Superset Viewers",
+                "Analytics Team"
+            ]
+        },
+        {
+            "username": "engineer-1",
+            "firstName": "John",
+            "lastName": "Engineer",
+            "email": "john.engineer@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "Engineer@123",
+                    "temporary": false
+                }
+            ],
+            "groups": [
+                "Data Engineers",
+                "Analytics Team"
+            ]
+        },
+        {
+            "username": "analyst-1",
+            "firstName": "Jane",
+            "lastName": "Analyst",
+            "email": "jane.analyst@analytics.local",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "Analyst@123",
+                    "temporary": false
+                }
+            ],
+            "groups": [
+                "Data Analysts",
+                "Analytics Team"
+            ]
+        }
+    ],
+    "clients": [
+        {
+            "clientId": "superset",
+            "name": "Apache Superset",
+            "description": "Apache Superset OAuth2 Client",
+            "enabled": true,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "CHANGE_ME_SUPERSET",
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": false,
+            "redirectUris": [
+                "http://superset:8088/oauth-authorized/keycloak",
+                "http://superset:8088/login/",
+                "http://superset:8088/",
+                "http://localhost:8089/oauth-authorized/keycloak",
+                "http://localhost:8089/login/",
+                "http://localhost:8089/"
+            ],
+            "webOrigins": [
+                "http://superset:8088",
+                "http://localhost:8089"
+            ]
+        },
+        {
+            "clientId": "admin-api",
+            "name": "Admin API",
+            "description": "Service account for admin API access",
+            "enabled": true,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "CHANGE_ME_ADMIN_API",
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": true,
+            "redirectUris": [],
+            "webOrigins": []
+        }
+    ]
+}

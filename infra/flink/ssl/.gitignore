@@ -1,0 +1,11 @@
+# Ignore all certificate files
+*.key
+*.crt
+*.pem
+*.csr
+*.p12
+*.pfx
+
+# Keep only the README
+!README.md
+!.gitignore

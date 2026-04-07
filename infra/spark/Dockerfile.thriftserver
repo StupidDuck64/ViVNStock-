@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1.6
+FROM bitnamilegacy/spark:3.5.6
+
+USER root
+
+RUN apt-get update && apt-get install -y curl gzip dos2unix net-tools && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /opt/bitnami/spark/jars && \
+    mkdir -p /opt/bitnami/spark/conf && \
+    mkdir -p /tmp/ranger/hivedev/policycache
+
+RUN mkdir -p /opt/bitnami/spark/jars && \
+    curl -L -o /opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar && \
+    curl -L -o /opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.791.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.791/aws-java-sdk-bundle-1.12.791.jar && \
+    curl -L -o /opt/bitnami/spark/jars/iceberg-spark-runtime-3.5_2.12-1.9.2.jar https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.9.2/iceberg-spark-runtime-3.5_2.12-1.9.2.jar && \
+    curl -L -o /opt/bitnami/spark/jars/ojdbc8.jar https://repo1.maven.org/maven2/com/oracle/database/jdbc/ojdbc8/21.9.0.0/ojdbc8-21.9.0.0.jar && \
+    curl -L -o /opt/bitnami/spark/jars/clickhouse-jdbc-0.8.5-all.jar https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.8.5/clickhouse-jdbc-0.8.5-all.jar
+
+ENV SPARK_HOME=/opt/bitnami/spark
+ENV PATH="$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH"
+ENV USER=spark
+ENV HADOOP_USER_NAME=spark
+
+# Copy all required files
+COPY start-thriftserver.sh /opt/start-thriftserver.sh
+COPY ranger-2.7.1-SNAPSHOT-hive-plugin.tar.gz /opt/ranger-2.7.1-SNAPSHOT-hive-plugin.tar.gz
+COPY install.properties /opt/install.properties
+
+# Copy Ranger configuration files vào đúng thư mục conf
+COPY ranger-hive-security.xml /opt/bitnami/spark/conf/ranger-hive-security.xml
+COPY ranger-hive-audit.xml /opt/bitnami/spark/conf/ranger-hive-audit.xml
+COPY ranger-policymgr-ssl.xml /opt/bitnami/spark/conf/ranger-policymgr-ssl.xml
+COPY hive-site.xml /opt/bitnami/spark/conf/hive-site.xml
+COPY core-site.xml /opt/bitnami/spark/conf/core-site.xml
+
+# Fix line endings and make executable
+RUN dos2unix /opt/start-thriftserver.sh && \
+    chmod +x /opt/start-thriftserver.sh && \
+    chmod 644 /opt/bitnami/spark/conf/*.xml
+
+EXPOSE 10000 4040
+
+ENTRYPOINT ["/opt/start-thriftserver.sh"]

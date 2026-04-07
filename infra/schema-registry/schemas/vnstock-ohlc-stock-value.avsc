@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "OhlcStock",
+  "namespace": "com.vnstock.avro",
+  "fields": [
+    {"name": "symbol",          "type": "string"},
+    {"name": "time",            "type": "long",   "doc": "Unix timestamp (seconds)"},
+    {"name": "open",            "type": "double"},
+    {"name": "high",            "type": "double"},
+    {"name": "low",             "type": "double"},
+    {"name": "close",           "type": "double"},
+    {"name": "volume",          "type": "long"},
+    {"name": "resolution",      "type": "string", "doc": "e.g. 1, 5, 15, 60, 1D"},
+    {"name": "lastUpdated",     "type": "long",   "doc": "Unix timestamp of last tick"},
+    {"name": "source",          "type": "string", "default": "DNSE"},
+    {"name": "ingest_timestamp","type": "long",   "doc": "Epoch ms at producer ingestion"}
+  ]
+}

@@ -1,0 +1,20 @@
+source:
+  type: postgres
+  config:
+    host_port: 192.168.26.181:15432
+    database: metastore
+    username: admin
+    password: admin
+    schema_pattern:
+      allow:
+        - public
+    include_tables: true
+    include_views: true
+
+    profiling:
+      enabled: false  # Đổi thành true nếu muốn profiling (tốn tài nguyên hơn)
+
+sink:
+  type: datahub-rest
+  config:
+    server: http://datahub-gms:8080

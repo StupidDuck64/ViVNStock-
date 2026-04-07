@@ -1,0 +1,321 @@
+# =============================================================================
+# Build Stage — Docker image builds using Kaniko
+# =============================================================================
+# Only builds services whose files have changed.
+# Uses the .kaniko-build template from templates.yml.
+# =============================================================================
+
+# ── Core Data ────────────────────────────────────────────────────────────────
+
+build:postgres:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/postgres/Dockerfile"
+    BUILD_CONTEXT: "infra/postgres"
+    IMAGE_NAME: "postgres"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/postgres/**/*"
+
+build:redis:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/redis/Dockerfile"
+    BUILD_CONTEXT: "infra/redis"
+    IMAGE_NAME: "redis"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/redis/**/*"
+
+build:minio:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/minio/Dockerfile"
+    BUILD_CONTEXT: "infra/minio"
+    IMAGE_NAME: "minio"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/minio/**/*"
+
+# ── Streaming ────────────────────────────────────────────────────────────────
+
+build:kafka:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/kafka/Dockerfile"
+    BUILD_CONTEXT: "infra/kafka"
+    IMAGE_NAME: "kafka"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/kafka/**/*"
+
+build:schema-registry:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/schema-registry/Dockerfile"
+    BUILD_CONTEXT: "infra/schema-registry"
+    IMAGE_NAME: "schema-registry"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/schema-registry/**/*"
+
+build:debezium:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/debezium/Dockerfile"
+    BUILD_CONTEXT: "infra/debezium"
+    IMAGE_NAME: "debezium"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/debezium/**/*"
+
+build:kafka-ui:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/kafka-ui/Dockerfile"
+    BUILD_CONTEXT: "infra/kafka-ui"
+    IMAGE_NAME: "kafka-ui"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/kafka-ui/**/*"
+
+# ── Processing ───────────────────────────────────────────────────────────────
+
+build:spark:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/spark/Dockerfile"
+    BUILD_CONTEXT: "infra/spark"
+    IMAGE_NAME: "spark"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/spark/**/*"
+
+build:spark-thriftserver:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/spark/Dockerfile.thriftserver"
+    BUILD_CONTEXT: "infra/spark"
+    IMAGE_NAME: "spark-thriftserver"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/spark/**/*"
+
+build:airflow:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/airflow/Dockerfile"
+    BUILD_CONTEXT: "infra/airflow"
+    IMAGE_NAME: "airflow"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/airflow/**/*"
+
+build:flink:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/flink/Dockerfile"
+    BUILD_CONTEXT: "infra/flink"
+    IMAGE_NAME: "flink"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/flink/**/*"
+
+# ── Storage ──────────────────────────────────────────────────────────────────
+
+build:hive-metastore:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/hive-metastore/Dockerfile"
+    BUILD_CONTEXT: "infra/hive-metastore"
+    IMAGE_NAME: "hive-metastore"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/hive-metastore/**/*"
+
+build:trino:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/trino/Dockerfile"
+    BUILD_CONTEXT: "infra/trino"
+    IMAGE_NAME: "trino"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/trino/**/*"
+
+build:clickhouse:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/clickhouse/Dockerfile"
+    BUILD_CONTEXT: "infra/clickhouse"
+    IMAGE_NAME: "clickhouse"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/clickhouse/**/*"
+
+build:clickhouse-keeper:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/clickhouse/keeper/Dockerfile"
+    BUILD_CONTEXT: "infra/clickhouse/keeper"
+    IMAGE_NAME: "clickhouse-keeper"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/clickhouse/keeper/**/*"
+
+# ── Analytics ────────────────────────────────────────────────────────────────
+
+build:superset:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/superset/Dockerfile"
+    BUILD_CONTEXT: "infra/superset"
+    IMAGE_NAME: "superset"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/superset/**/*"
+
+build:jupyterlab:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/jupyterlab/Dockerfile"
+    BUILD_CONTEXT: "infra/jupyterlab"
+    IMAGE_NAME: "jupyterlab"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/jupyterlab/**/*"
+
+# ── Security ─────────────────────────────────────────────────────────────────
+
+build:keycloak:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/keycloak/Dockerfile"
+    BUILD_CONTEXT: "infra/keycloak"
+    IMAGE_NAME: "keycloak"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/keycloak/**/*"
+
+build:vault:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/vault/Dockerfile"
+    BUILD_CONTEXT: "infra/vault"
+    IMAGE_NAME: "vault"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/vault/**/*"
+
+build:ranger-admin:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/ranger-admin/Dockerfile"
+    BUILD_CONTEXT: "infra/ranger-admin"
+    IMAGE_NAME: "ranger-admin"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/ranger-admin/**/*"
+
+# ── Observability ────────────────────────────────────────────────────────────
+
+build:elasticsearch:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/elasticsearch/Dockerfile"
+    BUILD_CONTEXT: "infra/elasticsearch"
+    IMAGE_NAME: "elasticsearch"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/elasticsearch/**/*"
+
+build:logstash:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/logstash/Dockerfile"
+    BUILD_CONTEXT: "infra/logstash"
+    IMAGE_NAME: "logstash"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/logstash/**/*"
+
+build:kibana:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/kibana/Dockerfile"
+    BUILD_CONTEXT: "infra/kibana"
+    IMAGE_NAME: "kibana"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/kibana/**/*"
+
+# ── Apps ─────────────────────────────────────────────────────────────────────
+
+build:data-generator:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/data-generator/Dockerfile"
+    BUILD_CONTEXT: "infra/data-generator"
+    IMAGE_NAME: "data-generator"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/data-generator/**/*"
+
+build:nifi:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/nifi/Dockerfile"
+    BUILD_CONTEXT: "infra/nifi"
+    IMAGE_NAME: "nifi"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/nifi/**/*"
+
+# ── OpenMetadata ─────────────────────────────────────────────────────────────
+
+build:openmetadata-server:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/openmetadata/openmetadata-server/Dockerfile"
+    BUILD_CONTEXT: "infra/openmetadata/openmetadata-server"
+    IMAGE_NAME: "openmetadata-server"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/openmetadata/**/*"
+
+build:openmetadata-ingestion:
+  extends: .kaniko-build
+  variables:
+    DOCKERFILE_PATH: "infra/openmetadata/ingestion/Dockerfile"
+    BUILD_CONTEXT: "infra/openmetadata/ingestion"
+    IMAGE_NAME: "openmetadata-ingestion"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "infra/openmetadata/**/*"

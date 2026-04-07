@@ -1,0 +1,125 @@
+{
+  "realm": "lakehouse",
+  "enabled": true,
+  "displayName": "Lakehouse OSS",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Platform administrator — full access"
+      },
+      {
+        "name": "data-engineer",
+        "description": "Data engineer — pipeline & orchestration access"
+      },
+      {
+        "name": "analyst",
+        "description": "Data analyst — BI & query access"
+      },
+      {
+        "name": "intern",
+        "description": "Intern — read-only exploration access"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "lakehouse-portal",
+      "name": "Lakehouse Portal",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "rootUrl": "http://localhost:3100",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:3100/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3100/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3100",
+        "http://localhost:3000",
+        "http://127.0.0.1:3100",
+        "+"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3100/*"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "phone",
+        "address"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "lakehouse-portal",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "email": "demo@lakehouse.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "intern",
+      "enabled": true,
+      "email": "intern@lakehouse.local",
+      "firstName": "Intern",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "intern123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "intern"
+      ]
+    }
+  ],
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "en",
+    "vi"
+  ],
+  "defaultLocale": "en"
+}

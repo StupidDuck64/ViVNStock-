@@ -1,0 +1,87 @@
+# =============================================================================
+# Lint Stage — Code quality checks
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Dockerfile Linting with Hadolint
+# ---------------------------------------------------------------------------
+lint:dockerfiles:
+  stage: lint
+  image: hadolint/hadolint:latest-debian
+  script:
+    - echo "🔍 Linting Dockerfiles..."
+    - |
+      find infra/ -name "Dockerfile*" -type f | while read -r dockerfile; do
+        echo "  → ${dockerfile}"
+        hadolint --config .hadolint.yaml "${dockerfile}" || LINT_FAILED=1
+      done
+    - |
+      if [ "${LINT_FAILED}" = "1" ]; then
+        echo "❌ Dockerfile lint errors found"
+        exit 1
+      fi
+    - echo "✅ All Dockerfiles passed lint checks"
+  allow_failure: true
+
+# ---------------------------------------------------------------------------
+# Python Linting with Ruff
+# ---------------------------------------------------------------------------
+lint:python:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet ruff
+  script:
+    - echo "🔍 Linting Python code..."
+    - ruff check infra/data-generator/ infra/airflow/dags/ infra/airflow/processing/ --config .ruff.toml
+    - ruff format --check infra/data-generator/ infra/airflow/dags/ infra/airflow/processing/ --config .ruff.toml
+    - echo "✅ Python lint passed"
+  allow_failure: true
+  rules:
+    - changes:
+        - "infra/data-generator/**/*.py"
+        - "infra/airflow/**/*.py"
+
+# ---------------------------------------------------------------------------
+# Shell Script Linting with ShellCheck
+# ---------------------------------------------------------------------------
+lint:shellscripts:
+  stage: lint
+  image: koalaman/shellcheck-alpine:stable
+  script:
+    - echo "🔍 Linting shell scripts..."
+    - |
+      find infra/ -name "*.sh" -type f | while read -r script; do
+        echo "  → ${script}"
+        shellcheck -x "${script}" || LINT_FAILED=1
+      done
+    - |
+      if [ "${LINT_FAILED}" = "1" ]; then
+        echo "❌ Shell script lint errors found"
+        exit 1
+      fi
+    - echo "✅ All shell scripts passed lint checks"
+  allow_failure: true
+  rules:
+    - changes:
+        - "infra/**/*.sh"
+
+# ---------------------------------------------------------------------------
+# YAML Linting
+# ---------------------------------------------------------------------------
+lint:yaml:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install --quiet yamllint
+  script:
+    - echo "🔍 Linting YAML files..."
+    - yamllint -d relaxed docker-compose.yml
+    - yamllint -d relaxed .gitlab-ci.yml .gitlab/ci/*.yml
+    - echo "✅ YAML lint passed"
+  allow_failure: true
+  rules:
+    - changes:
+        - "docker-compose.yml"
+        - ".gitlab-ci.yml"
+        - ".gitlab/ci/**/*.yml"

@@ -1,0 +1,1 @@
+FROM acryldata/datahub-elasticsearch-setup:v0.13.1

@@ -1,0 +1,10 @@
+source:
+  type: grafana
+  config:
+    url: "${GRAFANA_URL}"
+    service_account_token: "${GRAFANA_SERVICE_ACCOUNT_TOKEN}"
+
+sink:
+  type: datahub-rest
+  config:
+    server: "http://datahub-gms:8080"

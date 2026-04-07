@@ -1,0 +1,117 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 1048576
+
+scrape_configs:
+  # ── VNStock Producer logs ─────────────────────────────────────
+  - job_name: vnstock-producer
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*vnstock-producer.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: vnstock-producer
+    pipeline_stages:
+      - regex:
+          expression: '(?P<level>INFO|WARN|ERROR|DEBUG|CRITICAL)'
+      - labels:
+          level:
+
+  # ── Spark Master/Worker logs ──────────────────────────────────
+  - job_name: spark
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*spark.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: spark
+    pipeline_stages:
+      - regex:
+          expression: '(?P<level>INFO|WARN|ERROR|DEBUG)'
+      - labels:
+          level:
+
+  # ── Kafka logs ────────────────────────────────────────────────
+  - job_name: kafka
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*kafka.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: kafka
+
+  # ── VNStock API logs ──────────────────────────────────────────
+  - job_name: vnstock-api
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*vnstock-api.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: vnstock-api
+    pipeline_stages:
+      - regex:
+          expression: '(?P<level>INFO|WARNING|ERROR|CRITICAL)'
+      - labels:
+          level:
+
+  # ── Airflow logs ──────────────────────────────────────────────
+  - job_name: airflow
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*airflow.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: airflow
+
+  # ── Trino logs ────────────────────────────────────────────────
+  - job_name: trino
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: [".*trino.*"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: container
+      - target_label: job
+        replacement: trino

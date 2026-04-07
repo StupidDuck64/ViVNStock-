@@ -1,0 +1,28 @@
+{
+  "type": "record",
+  "name": "Quote",
+  "namespace": "com.vnstock.avro",
+  "fields": [
+    {"name": "symbol",          "type": "string"},
+    {"name": "marketId",        "type": "string"},
+    {"name": "boardId",         "type": "string", "default": ""},
+    {"name": "bid", "type": {"type": "array", "items": {
+      "type": "record", "name": "BidLevel",
+      "fields": [
+        {"name": "price",    "type": "double"},
+        {"name": "quantity", "type": "double"}
+      ]
+    }}},
+    {"name": "offer", "type": {"type": "array", "items": {
+      "type": "record", "name": "OfferLevel",
+      "fields": [
+        {"name": "price",    "type": "double"},
+        {"name": "quantity", "type": "double"}
+      ]
+    }}},
+    {"name": "totalBidQtty",    "type": "long"},
+    {"name": "totalOfferQtty",  "type": "long"},
+    {"name": "source",          "type": "string", "default": "DNSE"},
+    {"name": "ingest_timestamp","type": "long"}
+  ]
+}

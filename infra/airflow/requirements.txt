@@ -1,0 +1,17 @@
+# Airflow core (must be explicit)
+apache-airflow==3.0.6
+
+# Airflow Providers
+apache-airflow-providers-apache-spark
+apache-airflow-providers-common-sql
+apache-airflow-providers-fab
+
+# OAuth2 support
+authlib
+
+# dbt & Cosmos (dbt orchestration in Airflow)
+astronomer-cosmos>=1.15.0
+dbt-spark[PyHive]
+
+# Utils
+python-dotenv

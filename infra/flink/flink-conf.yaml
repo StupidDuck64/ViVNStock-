@@ -1,0 +1,62 @@
+#==============================================================================
+# Flink Configuration with Keycloak OAuth2/OIDC
+#==============================================================================
+
+# JobManager settings
+jobmanager.rpc.address: flink-jobmanager
+jobmanager.rpc.port: 6123
+jobmanager.memory.process.size: 2048m
+
+# TaskManager settings
+taskmanager.memory.process.size: 2048m
+taskmanager.numberOfTaskSlots: 4
+parallelism.default: 2
+
+# REST API settings
+rest.port: 8081
+rest.address: 0.0.0.0
+rest.bind-address: 0.0.0.0
+
+# Web UI settings
+web.submit.enable: true
+web.cancel.enable: true
+web.upload.dir: /tmp/flink-web-uploads
+
+# Security Configuration
+security.context.factory.classes: org.apache.flink.runtime.security.contexts.HadoopSecurityContextFactory
+
+# REST API Authentication
+rest.authentication.enabled: true
+rest.authentication.type: BEARER
+
+# OAuth2/OIDC Configuration with Keycloak
+security.oauth2.enabled: true
+security.oauth2.client.id: flink
+security.oauth2.client.secret: CHANGE_ME_FLINK_SECRET
+security.oauth2.authorization.endpoint: http://localhost:8084/realms/data-platform/protocol/openid-connect/auth
+security.oauth2.token.endpoint: http://keycloak:8080/realms/data-platform/protocol/openid-connect/token
+security.oauth2.userinfo.endpoint: http://keycloak:8080/realms/data-platform/protocol/openid-connect/userinfo
+security.oauth2.jwks.endpoint: http://keycloak:8080/realms/data-platform/protocol/openid-connect/certs
+security.oauth2.issuer: http://keycloak:8080/realms/data-platform
+security.oauth2.audience: flink
+security.oauth2.scope: openid email profile
+
+# Session settings
+web.session.timeout: 3600000
+
+# Checkpoint settings
+state.backend: filesystem
+state.checkpoints.dir: file:///tmp/flink-checkpoints
+state.savepoints.dir: file:///tmp/flink-savepoints
+
+# High Availability (disabled for single node)
+high-availability: NONE
+
+# Historyserver
+historyserver.web.address: 0.0.0.0
+historyserver.web.port: 8082
+historyserver.archive.fs.dir: file:///tmp/flink-completed-jobs
+
+# Metrics
+metrics.reporter.prometheus.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+metrics.reporter.prometheus.port: 9249

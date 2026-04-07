@@ -1,0 +1,92 @@
+# =============================================================================
+# Test Stage — Unit tests and validation
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Data Generator — Python unit tests
+# ---------------------------------------------------------------------------
+test:data-generator:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - cd infra/data-generator
+    - pip install --quiet -r requirements.txt
+    - pip install --quiet pytest pytest-cov
+  script:
+    - echo "🧪 Running data-generator tests..."
+    - python -m pytest tests/ -v --tb=short --junitxml=report.xml || true
+    - echo "✅ Tests complete"
+  artifacts:
+    when: always
+    reports:
+      junit: infra/data-generator/report.xml
+    expire_in: 7 days
+  rules:
+    - changes:
+        - "infra/data-generator/**/*"
+
+# ---------------------------------------------------------------------------
+# Airflow DAG Import Test — ensure DAGs can be parsed
+# ---------------------------------------------------------------------------
+test:airflow-dags:
+  stage: test
+  image: apache/airflow:3.0.6-python3.12
+  variables:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////tmp/airflow.db"
+  before_script:
+    - airflow db migrate 2>/dev/null || true
+  script:
+    - echo "🧪 Validating Airflow DAG imports..."
+    - |
+      ERRORS=0
+      for dag_file in infra/airflow/dags/*.py; do
+        echo "  → Testing ${dag_file}"
+        python "${dag_file}" 2>&1 || { echo "    ❌ FAILED"; ERRORS=$((ERRORS+1)); }
+      done
+      if [ ${ERRORS} -gt 0 ]; then
+        echo "❌ ${ERRORS} DAG(s) failed import test"
+        exit 1
+      fi
+    - echo "✅ All DAGs imported successfully"
+  allow_failure: true
+  rules:
+    - changes:
+        - "infra/airflow/dags/**/*"
+        - "infra/airflow/processing/**/*"
+
+# ---------------------------------------------------------------------------
+# Spark Jobs — syntax validation
+# ---------------------------------------------------------------------------
+test:spark-jobs:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - echo "🧪 Checking Spark job syntax..."
+    - |
+      find infra/airflow/processing/spark/jobs -name "*.py" -type f | while read -r py_file; do
+        echo "  → ${py_file}"
+        python -m py_compile "${py_file}"
+      done
+    - echo "✅ All Spark jobs have valid syntax"
+  rules:
+    - changes:
+        - "infra/airflow/processing/**/*.py"
+
+# ---------------------------------------------------------------------------
+# Docker Compose Config Validation
+# ---------------------------------------------------------------------------
+test:compose-config:
+  stage: test
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - echo "🧪 Validating docker-compose.yml..."
+    - docker compose -f docker-compose.yml config --quiet
+    - echo "✅ docker-compose.yml is valid"
+  rules:
+    - changes:
+        - "docker-compose.yml"

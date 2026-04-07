@@ -1,0 +1,26 @@
+source:
+  type: superset
+  serviceName: superset_prod
+  serviceConnection:
+    config:
+      type: Superset
+      hostPort: http://${SUPERSET_HOST}:${SUPERSET_PORT}
+      connection:
+        username: ${SUPERSET_USER}
+        password: ${SUPERSET_PASSWORD}
+        provider: ${SUPERSET_AUTH_PROVIDER}
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      markDeletedDashboards: true
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: ${OPENMETADATA_HOST}
+    authProvider: ${OPENMETADATA_AUTH_TYPE}
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN}
+    storeServiceConnection: true

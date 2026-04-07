@@ -1,0 +1,98 @@
+"""SRP: one place to parse and hold configuration.
+
+Keep it simple; no side effects beyond reading environment.
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+
+
+DEFAULT_CHECKPOINT_PREFIXES = [
+    "s3a://checkpoints/spark/iceberg/bronze/raw_events",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_users",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_products",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_inventory",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_warehouse_inventory",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_suppliers",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_customer_segments",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_product_suppliers",
+    "s3a://checkpoints/spark/iceberg/bronze/cdc/demo_public_warehouses",
+]
+
+
+@dataclass(frozen=True)
+class Config:
+    """DIP: business consumes Config, not raw env.
+
+    Values mirror previous globals to preserve behavior.
+    """
+
+    # Kafka
+    bootstrap: str = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
+    schema_registry: str = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8081")
+    topic_orders: str = os.getenv("TOPIC_ORDERS", "orders.v1")
+    topic_payments: str = os.getenv("TOPIC_PAYMENTS", "payments.v1")
+    topic_shipments: str = os.getenv("TOPIC_SHIPMENTS", "shipments.v1")
+    topic_inventory_changes: str = os.getenv("TOPIC_INVENTORY_CHANGES", "inventory-changes.v1")
+    topic_customer_interactions: str = os.getenv("TOPIC_CUSTOMER_INTERACTIONS", "customer-interactions.v1")
+
+    # Debezium CDC topics (demo database)
+    cdc_topic_users: str = os.getenv("CDC_TOPIC_USERS", "demo.public.users")
+    cdc_topic_products: str = os.getenv("CDC_TOPIC_PRODUCTS", "demo.public.products")
+    cdc_topic_inventory: str = os.getenv("CDC_TOPIC_INVENTORY", "demo.public.inventory")
+    cdc_topic_warehouse_inventory: str = os.getenv(
+        "CDC_TOPIC_WAREHOUSE_INVENTORY", "demo.public.warehouse_inventory"
+    )
+    cdc_topic_suppliers: str = os.getenv("CDC_TOPIC_SUPPLIERS", "demo.public.suppliers")
+    cdc_topic_customer_segments: str = os.getenv(
+        "CDC_TOPIC_CUSTOMER_SEGMENTS", "demo.public.customer_segments"
+    )
+    cdc_topic_product_suppliers: str = os.getenv(
+        "CDC_TOPIC_PRODUCT_SUPPLIERS", "demo.public.product_suppliers"
+    )
+    cdc_topic_warehouses: str = os.getenv(
+        "CDC_TOPIC_WAREHOUSES", "demo.public.warehouses"
+    )
+
+    # Postgres
+    pg_dsn: str = os.getenv(
+        "PG_DSN", "host=postgres port=5432 dbname=demo user=admin password=admin"
+    )
+
+    # Canonical inventory policy
+    canon_inventory: str = os.getenv("CANON_INVENTORY", "postgres")  # "postgres" | "kafka"
+    mirror_inventory_to_db: bool = os.getenv("MIRROR_INVENTORY_TO_DB", "false").lower() == "true"
+
+    # Event rates / weights
+    target_eps: float = float(os.getenv("TARGET_EPS", "120"))
+    weight_orders: float = float(os.getenv("WEIGHT_ORDERS", "0.35"))
+    weight_interactions: float = float(os.getenv("WEIGHT_INTERACTIONS", "0.45"))
+    weight_inventory_chg: float = float(os.getenv("WEIGHT_INVENTORY_CHG", "0.20"))
+
+    # Seeds
+    seed_users: int = int(os.getenv("SEED_USERS", "500"))
+    seed_products: int = int(os.getenv("SEED_PRODUCTS", "200"))
+    seed_warehouses: int = int(os.getenv("SEED_WAREHOUSES", "5"))
+    seed_suppliers: int = int(os.getenv("SEED_SUPPLIERS", "20"))
+
+    # Probabilities
+    p_order_has_payment: float = float(os.getenv("P_ORDER_HAS_PAYMENT", "0.7"))
+    p_order_has_shipment: float = float(os.getenv("P_ORDER_HAS_SHIPMENT", "0.6"))
+    p_update_inventory: float = float(os.getenv("P_UPDATE_INVENTORY", "0.12"))
+    p_update_price: float = float(os.getenv("P_UPDATE_PRICE", "0.04"))
+
+    # Late / bad
+    p_late_event: float = float(os.getenv("P_LATE_EVENT", "0.05"))
+    max_late_minutes: int = int(os.getenv("MAX_LATE_MINUTES", "25"))
+    p_bad_record: float = float(os.getenv("P_BAD_RECORD", "0.01"))
+
+    # Checkpoint cleanup
+    checkpoint_prefixes: tuple[str, ...] = tuple(
+        path.strip()
+        for path in os.getenv(
+            "CHECKPOINT_PREFIXES",
+            ",".join(DEFAULT_CHECKPOINT_PREFIXES),
+        ).split(",")
+        if path.strip()
+    )

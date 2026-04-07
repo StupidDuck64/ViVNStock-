@@ -1,0 +1,1 @@
+FROM acryldata/datahub-upgrade:releases-v1.1.0

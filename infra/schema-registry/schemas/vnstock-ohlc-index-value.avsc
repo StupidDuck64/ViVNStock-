@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "OhlcIndex",
+  "namespace": "com.vnstock.avro",
+  "fields": [
+    {"name": "symbol",          "type": "string"},
+    {"name": "time",            "type": "long"},
+    {"name": "open",            "type": "double"},
+    {"name": "high",            "type": "double"},
+    {"name": "low",             "type": "double"},
+    {"name": "close",           "type": "double"},
+    {"name": "volume",          "type": "long"},
+    {"name": "resolution",      "type": "string"},
+    {"name": "lastUpdated",     "type": "long"},
+    {"name": "source",          "type": "string", "default": "DNSE"},
+    {"name": "ingest_timestamp","type": "long"}
+  ]
+}

@@ -1,0 +1,11 @@
+groups:
+- name: "Node-Exporter"
+  rules:
+    - alert: HostMemoryIsUnderutilized
+      expr: (100 * node_memory_MemAvailable_bytes{instance="node-exporter:9100", job="node-exporter"} / node_memory_MemTotal_bytes{instance="node-exporter:9100", job="node-exporter"}) < 20
+      for: 15s
+      labels:
+        severity: critical
+      annotations:
+        summary: Host Memory is underutilized (Instance {{ $labels.instance }})
+        description: "Node memory is < 20% for 15 seconds. Consider increasing memory or optimizing usage. (Instance {{ $labels.instance }})\n  Remaining Memory = {{ $value }}%\n  Labels = {{ $labels }}"

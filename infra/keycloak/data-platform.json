@@ -1,0 +1,1629 @@
+{
+  "realm": "data-platform",
+  "displayName": "Data Platform",
+  "enabled": true,
+  "sslRequired": "EXTERNAL",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "passwordPolicy": "length(8) and specialChars(1) and upperCase(1) and digits(1)",
+  "roles": {
+    "realm": [
+      {
+        "name": "platform-admin",
+        "description": "Full administrative access to all platform services"
+      },
+      {
+        "name": "data-engineer",
+        "description": "Data engineering - pipeline development and orchestration"
+      },
+      {
+        "name": "data-analyst",
+        "description": "Data analysis - query and visualization access"
+      },
+      {
+        "name": "data-scientist",
+        "description": "Data science - ML model development"
+      },
+      {
+        "name": "ml-engineer",
+        "description": "ML Engineering - model deployment and monitoring"
+      },
+      {
+        "name": "business-user",
+        "description": "Business user - dashboard viewer"
+      },
+      {
+        "name": "superset-admin",
+        "description": "Full admin access to Superset"
+      },
+      {
+        "name": "superset-editor",
+        "description": "Create/edit charts and dashboards"
+      },
+      {
+        "name": "superset-viewer",
+        "description": "View-only access to dashboards"
+      },
+      {
+        "name": "analytics-user",
+        "description": "Basic analytics platform user"
+      },
+      {
+        "name": "airflow-admin",
+        "description": "Airflow administrator"
+      },
+      {
+        "name": "airflow-user",
+        "description": "Airflow DAG developer"
+      },
+      {
+        "name": "airflow-viewer",
+        "description": "Airflow read-only access"
+      },
+      {
+        "name": "spark-admin",
+        "description": "Spark cluster administrator"
+      },
+      {
+        "name": "spark-developer",
+        "description": "Spark job developer"
+      },
+      {
+        "name": "flink-admin",
+        "description": "Flink administrator"
+      },
+      {
+        "name": "flink-developer",
+        "description": "Flink streaming job developer"
+      },
+      {
+        "name": "trino-admin",
+        "description": "Trino administrator"
+      },
+      {
+        "name": "trino-user",
+        "description": "Trino query user"
+      },
+      {
+        "name": "datahub-admin",
+        "description": "DataHub administrator"
+      },
+      {
+        "name": "datahub-editor",
+        "description": "DataHub metadata editor"
+      },
+      {
+        "name": "datahub-viewer",
+        "description": "DataHub metadata viewer"
+      },
+      {
+        "name": "ranger-admin",
+        "description": "Apache Ranger administrator"
+      },
+      {
+        "name": "ranger-user",
+        "description": "Apache Ranger policy user"
+      },
+      {
+        "name": "ranger-auditor",
+        "description": "Apache Ranger auditor - read-only access to policies and audit logs"
+      },
+      {
+        "name": "openmetadata-admin",
+        "description": "OpenMetadata administrator - full access"
+      },
+      {
+        "name": "openmetadata-editor",
+        "description": "OpenMetadata editor - metadata editing capabilities"
+      },
+      {
+        "name": "openmetadata-viewer",
+        "description": "OpenMetadata viewer - read-only access to metadata"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Platform Administrators",
+      "path": "/Platform Administrators",
+      "realmRoles": [
+        "platform-admin",
+        "superset-admin",
+        "airflow-admin",
+        "spark-admin",
+        "flink-admin",
+        "trino-admin",
+        "datahub-admin",
+        "ranger-admin",
+        "openmetadata-admin"
+      ],
+      "attributes": {
+        "description": [
+          "Full platform administrative access"
+        ]
+      }
+    },
+    {
+      "name": "Superset Administrators",
+      "path": "/Superset Administrators",
+      "attributes": {},
+      "realmRoles": [
+        "superset-admin",
+        "analytics-user"
+      ],
+      "clientRoles": {}
+    },
+    {
+      "name": "Superset Editors",
+      "path": "/Superset Editors",
+      "attributes": {},
+      "realmRoles": [
+        "superset-editor",
+        "analytics-user"
+      ],
+      "clientRoles": {}
+    },
+    {
+      "name": "Superset Viewers",
+      "path": "/Superset Viewers",
+      "attributes": {},
+      "realmRoles": [
+        "superset-viewer",
+        "analytics-user"
+      ],
+      "clientRoles": {}
+    },
+    {
+      "name": "Data Engineering Team",
+      "path": "/Data Engineering Team",
+      "realmRoles": [
+        "data-engineer",
+        "airflow-user",
+        "spark-developer",
+        "trino-user",
+        "superset-editor",
+        "datahub-editor",
+        "openmetadata-editor"
+      ],
+      "attributes": {
+        "description": [
+          "Data pipeline developers"
+        ],
+        "department": [
+          "Engineering"
+        ]
+      }
+    },
+    {
+      "name": "Analytics Team",
+      "path": "/Analytics Team",
+      "realmRoles": [
+        "data-analyst",
+        "superset-editor",
+        "trino-user",
+        "datahub-viewer",
+        "airflow-viewer",
+        "analytics-user",
+        "openmetadata-viewer"
+      ],
+      "attributes": {
+        "description": [
+          "Data analysts and BI developers"
+        ],
+        "department": [
+          "Analytics"
+        ]
+      }
+    },
+    {
+      "name": "Data Engineers",
+      "path": "/Data Engineers",
+      "attributes": {},
+      "realmRoles": [
+        "superset-editor",
+        "analytics-user",
+        "data-engineer"
+      ],
+      "clientRoles": {}
+    },
+    {
+      "name": "Data Analysts",
+      "path": "/Data Analysts",
+      "attributes": {},
+      "realmRoles": [
+        "superset-viewer",
+        "analytics-user",
+        "data-analyst"
+      ],
+      "clientRoles": {}
+    },
+    {
+      "name": "ML Engineering Team",
+      "path": "/ML Engineering Team",
+      "realmRoles": [
+        "ml-engineer",
+        "data-scientist",
+        "spark-developer",
+        "flink-developer",
+        "trino-user",
+        "airflow-user",
+        "datahub-editor"
+      ],
+      "attributes": {
+        "description": [
+          "ML model developers and deployers"
+        ],
+        "department": [
+          "ML"
+        ]
+      }
+    },
+    {
+      "name": "Streaming Team",
+      "path": "/Streaming Team",
+      "realmRoles": [
+        "data-engineer",
+        "flink-developer",
+        "spark-developer",
+        "datahub-editor"
+      ],
+      "attributes": {
+        "description": [
+          "Real-time data processing"
+        ],
+        "department": [
+          "Engineering"
+        ]
+      }
+    },
+    {
+      "name": "Business Users",
+      "path": "/Business Users",
+      "realmRoles": [
+        "business-user",
+        "superset-viewer",
+        "datahub-viewer",
+        "openmetadata-viewer"
+      ],
+      "attributes": {
+        "description": [
+          "Dashboard viewers"
+        ],
+        "department": [
+          "Business"
+        ]
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "firstName": "Platform",
+      "lastName": "Administrator",
+      "email": "admin@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin@12345",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "platform-admin"
+      ],
+      "groups": [
+        "Platform Administrators"
+      ]
+    },
+    {
+      "username": "platform-admin",
+      "firstName": "Platform",
+      "lastName": "Administrator",
+      "email": "platform-admin@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "PlatformAdmin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "superset-admin",
+        "analytics-user"
+      ],
+      "groups": [
+        "Superset Administrators",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "superset-admin",
+      "firstName": "Superset",
+      "lastName": "Administrator",
+      "email": "superset-admin@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "SupersetAdmin@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Superset Administrators",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "superset-editor",
+      "firstName": "Superset",
+      "lastName": "Editor",
+      "email": "superset-editor@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "SupersetEditor@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Superset Editors",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "superset-viewer",
+      "firstName": "Superset",
+      "lastName": "Viewer",
+      "email": "superset-viewer@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "SupersetViewer@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Superset Viewers",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "data-engineer-1",
+      "firstName": "John",
+      "lastName": "Engineer",
+      "email": "john.engineer@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Engineer@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Data Engineering Team"
+      ]
+    },
+    {
+      "username": "engineer-1",
+      "firstName": "John",
+      "lastName": "Engineer",
+      "email": "john.engineer@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Engineer@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Data Engineers",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "data-analyst-1",
+      "firstName": "Jane",
+      "lastName": "Analyst",
+      "email": "jane.analyst@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Analyst@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "analyst-1",
+      "firstName": "Jane",
+      "lastName": "Analyst",
+      "email": "jane.analyst@analytics.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Analyst@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Data Analysts",
+        "Analytics Team"
+      ]
+    },
+    {
+      "username": "data-scientist-1",
+      "firstName": "Bob",
+      "lastName": "Scientist",
+      "email": "bob.scientist@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Scientist@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "ML Engineering Team"
+      ]
+    },
+    {
+      "username": "ml-engineer-1",
+      "firstName": "Alice",
+      "lastName": "ML",
+      "email": "alice.ml@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "MLEngineer@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "ML Engineering Team"
+      ]
+    },
+    {
+      "username": "business-user-1",
+      "firstName": "Tom",
+      "lastName": "Business",
+      "email": "tom.business@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Business@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Business Users"
+      ]
+    },
+    {
+      "username": "stream-engineer-1",
+      "firstName": "Sarah",
+      "lastName": "Stream",
+      "email": "sarah.stream@dataplatform.local",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "StreamEng@123",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "Streaming Team"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "superset",
+      "name": "Apache Superset",
+      "description": "Apache Superset OAuth2 Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_SUPERSET_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "http://superset:8088/oauth-authorized/keycloak",
+        "http://superset:8088/login/",
+        "http://superset:8088/",
+        "http://localhost:8089/oauth-authorized/keycloak",
+        "http://localhost:8089/login/",
+        "http://localhost:8089/",
+        "https://superset.company.com/oauth-authorized/keycloak",
+        "https://superset.company.com/login/",
+        "https://superset.company.com/"
+      ],
+      "webOrigins": [
+        "http://superset:8088",
+        "http://localhost:8089",
+        "https://superset.company.com"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "airflow",
+      "name": "Apache Airflow",
+      "description": "Apache Airflow Workflow Orchestration",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_AIRFLOW_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:8085/*",
+        "http://127.0.0.1:8085/*",
+        "http://127.0.0.1:3100/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8085",
+        "http://127.0.0.1:8085",
+        "http://127.0.0.1:3100",
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "profile",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "spark",
+      "name": "Apache Spark",
+      "description": "Apache Spark Distributed Computing",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_SPARK_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "redirectUris": [
+        "https://spark.company.com/*",
+        "http://localhost:8080/*",
+        "http://localhost:4040/*"
+      ],
+      "webOrigins": [
+        "https://spark.company.com",
+        "http://localhost:8080",
+        "http://localhost:4040"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "flink",
+      "name": "Apache Flink",
+      "description": "Apache Flink Stream Processing",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_FLINK_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "redirectUris": [
+        "https://flink.company.com/*",
+        "http://localhost:8081/*",
+        "http://localhost:8096/*"
+      ],
+      "webOrigins": [
+        "https://flink.company.com",
+        "http://localhost:8081",
+        "http://localhost:8096"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "trino",
+      "name": "Trino",
+      "description": "Trino Distributed SQL Query Engine",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_TRINO_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "https://trino.company.com/oauth2/callback",
+        "https://trino.company.com/*",
+        "http://localhost:8080/oauth2/callback",
+        "http://localhost:8080/*",
+        "https://localhost:8443/oauth2/callback",
+        "https://localhost:8443/*"
+      ],
+      "webOrigins": [
+        "https://trino.company.com",
+        "http://localhost:8080",
+        "https://localhost:8443"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "trino",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "datahub",
+      "name": "DataHub",
+      "description": "DataHub Metadata Platform",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_DATAHUB_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "https://datahub.company.com/callback/oidc",
+        "https://datahub.company.com/*",
+        "http://localhost:9004/callback/oidc",
+        "http://localhost:9004/*"
+      ],
+      "webOrigins": [
+        "https://datahub.company.com",
+        "http://localhost:9004"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "datahub-groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "datahub-groups",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "admin-api",
+      "name": "Admin API",
+      "description": "Service account for admin API access",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_ADMIN_API",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "service-account",
+      "name": "Service Account Client",
+      "description": "Service-to-service authentication",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_SERVICE_ACCOUNT_SECRET",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "ranger",
+      "name": "Apache Ranger",
+      "description": "Apache Ranger Authorization Framework - UI Login",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_RANGER_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "https://ranger.company.com/login.html",
+        "https://ranger.company.com/*",
+        "http://localhost:6080/login.html",
+        "http://localhost:6080/*"
+      ],
+      "webOrigins": [
+        "https://ranger.company.com",
+        "http://localhost:6080"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "ranger-admin-api",
+      "name": "Ranger Admin API",
+      "description": "Service account for Ranger to sync users/groups from Keycloak Admin API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ranger-admin-api-secret-local",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+    {
+      "clientId": "openmetadata",
+      "name": "OpenMetadata",
+      "description": "OpenMetadata Metadata Management Platform",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_OPENMETADATA_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:8585/callback",
+        "http://localhost:8585/*",
+        "https://openmetadata.company.com/callback",
+        "https://openmetadata.company.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8585",
+        "https://openmetadata.company.com"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "lakehouse-portal",
+      "name": "Lakehouse Portal",
+      "description": "OAuth2 Proxy Client for Portal",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "CHANGE_ME_OAUTH2_PROXY_SECRET",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "redirectUris": [
+        "http://127.0.0.1:3100/*",
+        "http://localhost:3100/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:3100",
+        "http://localhost:3100",
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "audience mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "lakehouse-portal",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "openid",
+      "description": "OpenID Connect scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "profile",
+      "description": "OpenID Connect built-in scope: profile",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${profileScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "firstName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "given_name",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "lastName",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "family_name",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "description": "OpenID Connect built-in scope: email",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "${emailScopeConsentText}"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email verified",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "emailVerified",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email_verified",
+            "jsonType.label": "boolean"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "description": "Role mappings",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "groups",
+      "description": "Group memberships",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "profile",
+    "email",
+    "roles"
+  ],
+  "defaultOptionalClientScopes": [
+    "groups"
+  ]
+}

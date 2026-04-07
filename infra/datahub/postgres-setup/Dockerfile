@@ -1,0 +1,1 @@
+FROM acryldata/datahub-postgres-setup:v0.13.1

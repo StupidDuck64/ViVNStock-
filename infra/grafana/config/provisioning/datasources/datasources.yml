@@ -1,0 +1,48 @@
+# ./grafana/provisioning/datasource.yml
+apiVersion: 1
+
+datasources:
+  - uid: prometheus
+    orgId: 1
+    name: prometheus
+    type: prometheus
+    typeName: Prometheus
+    access: proxy
+    url: http://prometheus:9090
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: true
+    readOnly: false
+    editable: false
+
+  - uid: loki
+    orgId: 1
+    name: loki
+    type: loki
+    typeName: Loki
+    access: proxy
+    url: http://loki:3100
+    password: ''
+    user: ''
+    database: ''
+    basicAuth: false
+    isDefault: false
+    readOnly: false
+    editable: false
+
+  - uid: vertamedia-clickhouse-datasource
+    orgId: 1
+    name: vertamedia-clickhouse-datasource
+    type: vertamedia-clickhouse-datasource
+    typeName: ClickHouse
+    access: proxy
+    url: http://clickhouse:8123
+    basicAuth: true
+    basicAuthUser: 'admin'
+    isDefault: false
+    readOnly: false
+    editable: true
+    secureJsonData:
+      basicAuthPassword: 'admin'

@@ -1,0 +1,56 @@
+# =============================================================================
+# Reusable Job Templates
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Kaniko Build Template — builds and pushes Docker images without DinD
+# ---------------------------------------------------------------------------
+.kaniko-build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  variables:
+    DOCKERFILE_PATH: ""
+    BUILD_CONTEXT: ""
+    IMAGE_NAME: ""
+  before_script:
+    # Authenticate with Docker Hub
+    - mkdir -p /kaniko/.docker
+    - |
+      echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf '%s:%s' "${DOCKERHUB_USERNAME}" "${DOCKERHUB_TOKEN}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  script:
+    - |
+      /kaniko/executor \
+        --context "${CI_PROJECT_DIR}/${BUILD_CONTEXT}" \
+        --dockerfile "${CI_PROJECT_DIR}/${DOCKERFILE_PATH}" \
+        --destination "${DOCKERHUB_REPO}-${IMAGE_NAME}:${IMAGE_TAG}" \
+        --destination "${DOCKERHUB_REPO}-${IMAGE_NAME}:${CI_COMMIT_REF_SLUG}" \
+        --cache=true \
+        --cache-repo="${DOCKERHUB_REPO}-${IMAGE_NAME}/cache" \
+        --snapshot-mode=redo \
+        --use-new-run
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "main"
+
+# ---------------------------------------------------------------------------
+# Deploy Template — Runs directly on the Local VM via GitLab Runner
+# ---------------------------------------------------------------------------
+.deploy-base:
+  stage: deploy
+  tags:
+    - lakehouse-local
+  before_script:
+    - echo "🚀 Starting deployment on local VM..."
+  script:
+    - cd ${CI_PROJECT_DIR}
+    # Login to Docker Hub
+    - echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+    # Pull latest images and restart
+    - docker compose --profile ${COMPOSE_PROFILES} pull
+    - docker compose --profile ${COMPOSE_PROFILES} up -d --remove-orphans
+    # Cleanup old images
+    - docker image prune -f
+    - echo "✅ Deployment complete!"
+  after_script:
+    - echo "Deployment finished at $(date)"

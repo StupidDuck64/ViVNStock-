@@ -1,0 +1,4 @@
+FROM postgres:15-alpine
+COPY vault-entrypoint-db.sh /vault-entrypoint-db.sh
+RUN chmod +x /vault-entrypoint-db.sh
+ENTRYPOINT ["/vault-entrypoint-db.sh"]
