@@ -92,10 +92,12 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
           const daily = dailyMap[s.symbol];
           // Use live tick price as primary (real-time), fallback to daily for off-hours
           const price = tick?.close || daily?.todayClose || 0;
-          // Use basicPrice (previous session close) as reference for % change
-          const ref = daily?.basicPrice || daily?.prevClose || tick?.open || price;
-          // Always calculate changePct derived from the current displayed price to ensure math is visible and sound
-          const changePct = ref > 0 ? ((price - ref) / ref) * 100 : 0;
+          // Prefer pre-computed changePct from producer (uses prevClose, same as header)
+          // Recalculate only when we have a live tick price AND a valid reference
+          const ref = daily?.basicPrice || daily?.prevClose || 0;
+          const changePct = (price && ref > 0)
+            ? ((price - ref) / ref) * 100
+            : (daily?.changePct ?? 0);
 
           const isUp = changePct >= 0;
           const isActive = selectedSymbol === s.symbol;

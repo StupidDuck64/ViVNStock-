@@ -17,7 +17,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { fetchAllRealtime, fetchSymbols } from "../services/api";
+import { fetchAllRealtime, fetchAllDaily, fetchSymbols } from "../services/api";
 
 /* ─── Top Movers (Gainers/Losers) side panel ─── */
 const TIME_FILTERS = [
@@ -148,6 +148,7 @@ export default function PriceBoard({ onSelectSymbol }) {
   const [ticks, setTicks] = useState({});          // symbol → tick
   const [quotes, setQuotes] = useState({});         // symbol → quote
   const [secdefs, setSecdefs] = useState({});       // symbol → secdef
+  const [dailyMap, setDailyMap] = useState({});     // symbol → daily (basicPrice, changePct)
   const [activeTab, setActiveTab] = useState("VN30");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState(null);       // { col, dir }
@@ -161,12 +162,20 @@ export default function PriceBoard({ onSelectSymbol }) {
   // Batch-fetch all data
   const fetchAll = useCallback(async () => {
     try {
-      // Fetch all ticks
-      const allTicks = await fetchAllRealtime();
+      // Fetch all ticks + daily data in parallel
+      const [allTicks, dailyList] = await Promise.all([
+        fetchAllRealtime(),
+        fetchAllDaily(),
+      ]);
       if (Array.isArray(allTicks)) {
         const map = {};
         allTicks.forEach((t) => { if (t?.symbol) map[t.symbol] = t; });
         setTicks(map);
+      }
+      if (Array.isArray(dailyList)) {
+        const dMap = {};
+        dailyList.forEach((d) => { if (d?.symbol) dMap[d.symbol] = d; });
+        setDailyMap(dMap);
       }
 
       // Fetch quotes + secdefs in batch for visible symbols
@@ -235,17 +244,19 @@ export default function PriceBoard({ onSelectSymbol }) {
       const quote = quotes[sym];
       const secdef = secdefs[sym];
 
+      const daily = dailyMap[sym];
       const close = tick?.close || 0;
       const open = tick?.open || close;
       const high = tick?.high || close;
       const low = tick?.low || close;
       const volume = tick?.volume || 0;
-      const ref = secdef?.basicPrice || open;
-      const ceil = secdef?.ceilingPrice || 0;
-      const floor = secdef?.floorPrice || 0;
+      // Use daily.basicPrice (from producer REST batch) as primary ref — always available
+      const ref = daily?.basicPrice || secdef?.basicPrice || daily?.prevClose || open;
+      const ceil = secdef?.ceilingPrice || daily?.ceilingPrice || 0;
+      const floor = secdef?.floorPrice || daily?.floorPrice || 0;
 
       const change = close - ref;
-      const changePct = ref > 0 ? (change / ref) * 100 : 0;
+      const changePct = (close && ref > 0) ? (change / ref) * 100 : (daily?.changePct ?? 0);
 
       // 3 best bids
       const bids = [];
@@ -279,7 +290,7 @@ export default function PriceBoard({ onSelectSymbol }) {
 
       return { sym, close, open, high, low, volume, ref, ceil, floor, change, changePct, bids, asks, totalBidVol: quote?.totalBidQtty || 0, totalAskVol: quote?.totalOfferQtty || 0 };
     });
-  }, [getVisibleSymbols, ticks, quotes, secdefs]);
+  }, [getVisibleSymbols, ticks, quotes, secdefs, dailyMap]);
 
   // Sort
   const sortedRows = useMemo(() => {
