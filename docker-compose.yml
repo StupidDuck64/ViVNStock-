@@ -402,7 +402,7 @@ services:
 
       # Listeners - expose both internal and external
       KAFKA_CFG_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://192.168.26.181:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KEYCLOAK_HOST:-localhost}:9092
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
@@ -1458,9 +1458,9 @@ services:
 
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak_pass}   # .env fallback; overridden by Vault
 
-      KC_HOSTNAME: ${KEYCLOAK_HOST:-192.168.26.181}
+      KC_HOSTNAME: ${KEYCLOAK_HOST:-localhost}
 
-      KC_HOSTNAME_ADMIN_URL: http://192.168.26.181:18084
+      KC_HOSTNAME_ADMIN_URL: http://${KEYCLOAK_HOST:-localhost}:${KEYCLOAK_PORT:-18084}
 
       KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-18084}
 
@@ -1687,7 +1687,7 @@ services:
         state.savepoints.dir: s3a://flink-checkpoints/savepoints
 
         # ===== S3 / MinIO =====
-        fs.s3a.endpoint: http://192.168.26.181:9000
+        fs.s3a.endpoint: http://minio:9000
         fs.s3a.access.key: minio
         fs.s3a.secret.key: minio123
         fs.s3a.path.style.access: true
@@ -1804,7 +1804,7 @@ services:
         condition: service_healthy
       hive-metastore:
         condition: service_healthy
-    profiles: [core, ranger]
+    profiles: [ranger]
 
   ranger-usersync:
     build:
