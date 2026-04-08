@@ -210,11 +210,16 @@ _stats = {
 # ─── Live candle state (build 1m candles from individual trades) ──
 _live_candles: dict[str, dict] = {}
 
+# ─── Persistent reference data: prevClose / basicPrice per symbol ──
+# Never cleared by buffer flush — holds the authoritative reference price
+# so _handle_ohlc_1d can always compute changePct correctly.
+_daily_persist: dict[str, dict] = {}     # symbol → {prevClose, basicPrice, ceilingPrice, floorPrice}
+
 # ─── Write buffers: accumulate writes, flush periodically via pipeline ──
 # This prevents 1000+ concurrent Redis connections from WS callbacks.
 # Each callback just writes to the dict; a flush task pipelines all at once.
 _tick_buffer: dict[str, dict] = {}       # symbol → tick dict (latest wins)
-_daily_buffer: dict[str, dict] = {}      # symbol → daily dict
+_daily_buffer: dict[str, dict] = {}      # symbol → daily dict (intraday OHLCV delta only)
 _quote_buffer: dict[str, dict] = {}      # symbol → quote dict
 _kafka_buffer: list[dict] = []           # list of ticks to publish
 _buffer_lock = asyncio.Lock() if hasattr(asyncio, 'Lock') else None
@@ -243,7 +248,11 @@ async def _flush_buffers(r, kafka):
             pipe.set(f"vnstock:tick:{sym}", json.dumps(tick))
             pipe.zadd("vnstock:ticks:all", {sym: tick["time"]})
         for sym, daily in dailies.items():
-            pipe.set(f"vnstock:daily:{sym}", json.dumps(daily))
+            # Merge with persistent reference data so prevClose/basicPrice
+            # never get wiped from Redis by an intraday OHLCV-only update.
+            merged = dict(_daily_persist.get(sym, {}))
+            merged.update(daily)
+            pipe.set(f"vnstock:daily:{sym}", json.dumps(merged))
         for sym, q in quotes.items():
             pipe.set(f"vnstock:quote:{sym}", json.dumps(q))
         await pipe.execute()
@@ -348,20 +357,21 @@ async def _handle_ohlc_1m(r: aioredis.Redis, kafka: AIOKafkaProducer, ohlc: Ohlc
 
 
 async def _handle_ohlc_1d(r: aioredis.Redis, ohlc: Ohlc):
-    """Daily OHLC → buffer daily data (merge with existing buffer only, no Redis read)."""
+    """Daily OHLC → buffer intraday OHLCV; compute changePct from persistent reference."""
     try:
         sym = ohlc.symbol
-        # Merge with buffer only — batch layer supplies prevClose every 60s
         daily = _daily_buffer.get(sym, {})
+        today_close = float(ohlc.close)
         daily.update({
             "symbol": sym,
             "todayOpen": float(ohlc.open), "todayHigh": float(ohlc.high),
-            "todayLow": float(ohlc.low), "todayClose": float(ohlc.close),
+            "todayLow": float(ohlc.low), "todayClose": today_close,
             "todayVol": int(ohlc.volume),
         })
-        ref = daily.get("prevClose", 0)
+        # Always read prevClose from persistent store (survives buffer flush cycles)
+        ref = _daily_persist.get(sym, {}).get("prevClose", 0)
         if ref and ref > 0:
-            daily["changePct"] = round(((float(ohlc.close) - ref) / ref) * 100, 4)
+            daily["changePct"] = round(((today_close - ref) / ref) * 100, 4)
         _daily_buffer[sym] = daily
         _stats["ws_ohlc_1d"] += 1
     except Exception as e:
@@ -370,12 +380,38 @@ async def _handle_ohlc_1d(r: aioredis.Redis, ohlc: Ohlc):
 
 
 async def _handle_secdef(r: aioredis.Redis, sd: SecurityDefinition):
-    """Security definition → Redis secdef + daily changePct."""
+    """Security definition from exchange WS → Redis secdef (initial fill only).
+
+    Writes the official exchange reference prices (basicPrice / ceilingPrice / floorPrice)
+    coming directly from HOSE/HNX/UPCOM via DNSE WS. Used as an initial fill so that
+    changePct is available immediately on startup before the REST batch layer runs.
+    The REST batch layer (_fetch_daily, every 5 min) overwrites with confirmed values.
+    """
     try:
         sym = sd.symbol
-        # We DO NOT want the websocket to override basicPrice because it often sends T-1 or outdated reference data.
-        # The REST batch layer _fetch_daily is the authoritative source for basicPrice/ceiling/floor.
-        pass
+        if not sym:
+            return
+        basic = float(sd.basicPrice) if sd.basicPrice else 0.0
+        if basic <= 0:
+            return
+        ceiling = float(sd.ceilingPrice) if sd.ceilingPrice else round(basic * 1.07, 2)
+        floor_p = float(sd.floorPrice) if sd.floorPrice else round(basic * 0.93, 2)
+
+        secdef_data = {
+            "symbol": sym,
+            "basicPrice": basic,
+            "ceilingPrice": ceiling,
+            "floorPrice": floor_p,
+        }
+        # Populate persistent store — REST batch overwrites this every 5 min with confirmed data
+        if sym not in _daily_persist:
+            _daily_persist[sym] = {}
+        _daily_persist[sym].update({
+            "prevClose": basic, "basicPrice": basic,
+            "ceilingPrice": ceiling, "floorPrice": floor_p,
+        })
+        await r.set(f"vnstock:secdef:{sym}", json.dumps(secdef_data))
+        _stats["ws_secdef"] += 1
     except Exception as e:
         _stats["errors"] += 1
         logger.error("SecDef handler error for %s: %s", getattr(sd, "symbol", "?"), e)
@@ -645,6 +681,14 @@ async def rest_batch_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
                                   "floorPrice": d["floorPrice"]}
                         pipe.set(f"vnstock:secdef:{sym}", json.dumps(secdef))
                         pipe.set(f"vnstock:daily:{sym}", json.dumps(d))
+                        # Update persistent store — REST values are authoritative,
+                        # override any earlier WS-secdef fill.
+                        _daily_persist[sym] = {
+                            "prevClose": d["prevClose"],
+                            "basicPrice": d["basicPrice"],
+                            "ceilingPrice": d["ceilingPrice"],
+                            "floorPrice": d["floorPrice"],
+                        }
                     await pipe.execute()
                     logger.info("[Batch Layer] Daily secdef: %d/%d symbols",
                                 len(daily_list), len(all_symbols))

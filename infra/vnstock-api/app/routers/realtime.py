@@ -39,6 +39,57 @@ _trino_cache_all: list = []       # all ticks
 _trino_cache_ts: float = 0        # timestamp of last cache refresh
 TRINO_CACHE_TTL = 60              # refresh every 60 seconds
 
+# ── Secdef fallback cache (compute from Iceberg when Redis missing) ──
+_secdef_iceberg_cache: dict = {}  # symbol → secdef dict
+_secdef_iceberg_ts: float = 0
+SECDEF_ICEBERG_TTL = 300          # refresh every 5 minutes
+
+
+def _secdef_from_iceberg(sym: str) -> dict | None:
+    """Compute basicPrice from Iceberg gold daily table (prev close of last 2 rows).
+    Used as fallback when vnstock:secdef:{sym} is missing from Redis (e.g. local
+    instance with no running producer or stale data).
+    """
+    global _secdef_iceberg_cache, _secdef_iceberg_ts
+    now = _time.time()
+    cached = _secdef_iceberg_cache.get(sym)
+    if cached and (now - _secdef_iceberg_ts) < SECDEF_ICEBERG_TTL:
+        return cached
+    conn = None
+    try:
+        conn = get_trino_connection()
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT close FROM iceberg.gold.vnstock_ohlc_1d "
+            f"WHERE symbol = '{sym}' ORDER BY time DESC LIMIT 2"
+        )
+        rows = cur.fetchall()
+        if len(rows) < 2:
+            return None
+        # rows[0] = today (or latest), rows[1] = previous day = reference price
+        prev_close = float(rows[1][0])
+        if prev_close <= 0:
+            return None
+        secdef = {
+            "symbol": sym,
+            "basicPrice": prev_close,
+            "ceilingPrice": round(prev_close * 1.07, 2),
+            "floorPrice": round(prev_close * 0.93, 2),
+            "source": "iceberg",
+        }
+        _secdef_iceberg_cache[sym] = secdef
+        _secdef_iceberg_ts = now
+        return secdef
+    except Exception as e:
+        logger.debug("Iceberg secdef fallback failed for %s: %s", sym, e)
+        return None
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
 def _trino_latest_tick(sym: str) -> dict | None:
     """Fallback: get the latest 1m candle from Iceberg (cached 60s)."""
@@ -247,6 +298,12 @@ async def get_summary(
         result["quote"] = json.loads(quote_raw)
     if secdef_raw:
         result["secdef"] = json.loads(secdef_raw)
+    else:
+        # Fallback: compute basicPrice from Iceberg daily table when Redis has no secdef
+        # (local instance with no running producer, or first startup before batch layer runs)
+        iceberg_secdef = _secdef_from_iceberg(sym)
+        if iceberg_secdef:
+            result["secdef"] = iceberg_secdef
     if expected_raw:
         result["expected"] = json.loads(expected_raw)
     if daily_raw:
@@ -276,6 +333,13 @@ async def get_daily(
             result["basicPrice"] = sd.get("basicPrice")
             result["ceilingPrice"] = sd.get("ceilingPrice")
             result["floorPrice"] = sd.get("floorPrice")
+        elif not result.get("basicPrice"):
+            # Fallback: compute from Iceberg when secdef not in Redis
+            iceberg_secdef = _secdef_from_iceberg(sym)
+            if iceberg_secdef:
+                result["basicPrice"] = iceberg_secdef["basicPrice"]
+                result["ceilingPrice"] = iceberg_secdef["ceilingPrice"]
+                result["floorPrice"] = iceberg_secdef["floorPrice"]
         return result
 
     # All symbols: scan vnstock:daily:* keys

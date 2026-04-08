@@ -92,7 +92,8 @@ export default function App() {
   }, [symbol, handlePriceUpdate]);
 
   // Calculate % change using basicPrice (tham chiếu) as reference — same logic as SSI iBoard
-  const refPrice = secdef?.basicPrice || (latestPrice && latestPrice.open) || 0;
+  // Fallback order: secdef.basicPrice → daily.prevClose → daily.basicPrice (never use today's open)
+  const refPrice = secdef?.basicPrice || daily?.prevClose || daily?.basicPrice || 0;
   const change =
     latestPrice && refPrice > 0
       ? ((latestPrice.close - refPrice) / refPrice) * 100
