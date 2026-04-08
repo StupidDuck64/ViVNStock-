@@ -41,7 +41,13 @@ function TopMoversPanel({ rows, onSelectSymbol }) {
   }, [sorted, topN]);
 
   const losers = useMemo(() => {
-    return [...sorted].sort((a, b) => a.changePct - b.changePct).slice(0, topN);
+    // Step 1: get the N worst-performing stocks (most negative / least positive)
+    const bottom = [...sorted]
+      .sort((a, b) => a.changePct - b.changePct)
+      .slice(0, topN);
+    // Step 2: within that group, put the biggest absolute decline first
+    // Works for both: all-negative days (−3.40% at #1) and all-positive days (3.40% at #1)
+    return [...bottom].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
   }, [sorted, topN]);
 
   const fmtPrice = (v) => v ? (v / 1000).toFixed(2) : "—";
