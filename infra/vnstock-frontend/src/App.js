@@ -76,6 +76,21 @@ export default function App() {
     return () => { cancelled = true; };
   }, [symbol]);
 
+  // Periodic poll: refresh header price + secdef + daily every 3s as WS fallback.
+  // If WebSocket drops silently (nginx timeout, network blip), this ensures
+  // the header price never freezes — it always converges to the real-time value.
+  useEffect(() => {
+    const id = setInterval(async () => {
+      try {
+        const data = await fetchSummary(symbol);
+        if (data.tick) handlePriceUpdate(data.tick);
+        if (data.secdef) setSecdef(data.secdef);
+        if (data.daily) setDaily(data.daily);
+      } catch (_) {}
+    }, 3000);
+    return () => clearInterval(id);
+  }, [symbol, handlePriceUpdate]);
+
   // Calculate % change using basicPrice (tham chiếu) as reference — same logic as SSI iBoard
   const refPrice = secdef?.basicPrice || (latestPrice && latestPrice.open) || 0;
   const change =

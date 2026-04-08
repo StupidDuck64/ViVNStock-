@@ -24,6 +24,8 @@ import json
 import hashlib
 import logging
 import re
+import time as _time
+import urllib.request
 
 from fastapi import APIRouter, Query, HTTPException
 from app.connections import get_trino_connection, get_redis
@@ -55,6 +57,48 @@ TABLE_MAP = {
 
 # Regex for symbol validation: 1-15 alphanumeric chars (VCB, VN30F2506, VNINDEX)
 _SYM_RE = re.compile(r"^[A-Z0-9]{1,15}$")
+
+# DNSE REST for filling gap between Iceberg (last backfill) and now
+_DNSE_CHART_URL = "https://services.entrade.com.vn/chart-api/v2/ohlcs/stock"
+# Map our interval keys → DNSE resolution param
+_DNSE_RES_MAP = {
+    "1m": "1", "5m": "5", "15m": "15", "30m": "30",
+    "1h": "60", "4h": "240", "1d": "1D",
+}
+
+
+def _fetch_live_candles(sym: str, interval: str, from_ts: int, to_ts: int) -> list[dict]:
+    """Fetch recent candles from DNSE REST API to fill Iceberg gap."""
+    res = _DNSE_RES_MAP.get(interval)
+    if not res:
+        return []
+    url = (
+        f"{_DNSE_CHART_URL}?symbol={sym}&resolution={res}"
+        f"&from={from_ts}&to={to_ts}"
+    )
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "VVS-API/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode())
+        if not data.get("t"):
+            return []
+        candles = []
+        for i in range(len(data["t"])):
+            t = int(data["t"][i])
+            if t > 1_000_000_000_000:
+                t = t // 1000
+            candles.append({
+                "time": t,
+                "open": float(data["o"][i]),
+                "high": float(data["h"][i]),
+                "low": float(data["l"][i]),
+                "close": float(data["c"][i]),
+                "volume": int(data["v"][i]),
+            })
+        return candles
+    except Exception as e:
+        logger.debug("DNSE REST gap-fill failed for %s: %s", sym, e)
+        return []
 
 
 @router.get("/history")
@@ -167,6 +211,31 @@ async def get_history(
         })
 
     logger.info("/history %s %s → %d candles", sym, interval, len(candles))
+
+    # ── Fill gap: if latest Iceberg candle is too old, fetch recent from DNSE REST ──
+    # This bridges the gap between the last Spark backfill and the current live moment.
+    # Without this, the chart has a hole from last-backfill to now.
+    now_utc = int(_time.time())
+    if candles and end_time is None:
+        latest_time = candles[-1]["time"]
+        gap_sec = now_utc - latest_time
+        if gap_sec > 120:  # more than 2 minutes behind
+            live = _fetch_live_candles(sym, interval, latest_time, now_utc)
+            if live:
+                existing_times = {c["time"] for c in candles}
+                new_candles = [c for c in live if c["time"] not in existing_times]
+                if new_candles:
+                    candles.extend(new_candles)
+                    candles.sort(key=lambda c: c["time"])
+                    logger.info("/history %s %s → +%d live candles (gap-fill)",
+                                sym, interval, len(new_candles))
+    elif not candles and end_time is None:
+        # No Iceberg data at all — fetch entirely from DNSE REST
+        live = _fetch_live_candles(sym, interval, now_utc - 86400 * 5, now_utc)
+        if live:
+            candles = live
+            logger.info("/history %s %s → %d candles from DNSE (no Iceberg)",
+                        sym, interval, len(candles))
 
     # ── Write to Redis cache ──
     try:

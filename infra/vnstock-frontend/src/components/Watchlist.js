@@ -90,8 +90,8 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
         {filtered.map((s) => {
           const tick = prices[s.symbol];
           const daily = dailyMap[s.symbol];
-          // Prefer daily.todayClose (which includes ATC matches) over raw tick trades
-          const price = daily?.todayClose || tick?.close || 0;
+          // Use live tick price as primary (real-time), fallback to daily for off-hours
+          const price = tick?.close || daily?.todayClose || 0;
           // Use basicPrice (previous session close) as reference for % change
           const ref = daily?.basicPrice || daily?.prevClose || tick?.open || price;
           // Always calculate changePct derived from the current displayed price to ensure math is visible and sound

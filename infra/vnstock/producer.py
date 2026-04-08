@@ -210,35 +210,81 @@ _stats = {
 # ─── Live candle state (build 1m candles from individual trades) ──
 _live_candles: dict[str, dict] = {}
 
+# ─── Write buffers: accumulate writes, flush periodically via pipeline ──
+# This prevents 1000+ concurrent Redis connections from WS callbacks.
+# Each callback just writes to the dict; a flush task pipelines all at once.
+_tick_buffer: dict[str, dict] = {}       # symbol → tick dict (latest wins)
+_daily_buffer: dict[str, dict] = {}      # symbol → daily dict
+_quote_buffer: dict[str, dict] = {}      # symbol → quote dict
+_kafka_buffer: list[dict] = []           # list of ticks to publish
+_buffer_lock = asyncio.Lock() if hasattr(asyncio, 'Lock') else None
+
+
+async def _flush_buffers(r, kafka):
+    """Flush all write buffers to Redis + Kafka in a single pipeline."""
+    global _tick_buffer, _daily_buffer, _quote_buffer, _kafka_buffer
+
+    # Swap buffers atomically
+    ticks = _tick_buffer
+    _tick_buffer = {}
+    dailies = _daily_buffer
+    _daily_buffer = {}
+    quotes = _quote_buffer
+    _quote_buffer = {}
+    kafkas = _kafka_buffer
+    _kafka_buffer = []
+
+    if not ticks and not dailies and not quotes:
+        return
+
+    try:
+        pipe = r.pipeline()
+        for sym, tick in ticks.items():
+            pipe.set(f"vnstock:tick:{sym}", json.dumps(tick))
+            pipe.zadd("vnstock:ticks:all", {sym: tick["time"]})
+        for sym, daily in dailies.items():
+            pipe.set(f"vnstock:daily:{sym}", json.dumps(daily))
+        for sym, q in quotes.items():
+            pipe.set(f"vnstock:quote:{sym}", json.dumps(q))
+        await pipe.execute()
+    except Exception as e:
+        _stats["errors"] += 1
+        if _stats["errors"] % 100 == 1:
+            logger.error("Buffer flush Redis error: %s", e)
+
+    # Kafka (non-blocking)
+    if kafkas and kafka and _avro_schema_id >= 0:
+        for tick in kafkas:
+            try:
+                key = tick["symbol"].encode("utf-8")
+                value = _encode_avro(tick)
+                await kafka.send(KAFKA_TOPIC, key=key, value=value)
+                _stats["kafka_sent"] += 1
+            except Exception as e:
+                _stats["errors"] += 1
+
+
+async def _buffer_flusher(r, kafka, stop_event: asyncio.Event):
+    """Background task: flush write buffers every 200ms."""
+    while not stop_event.is_set():
+        await asyncio.sleep(0.2)
+        await _flush_buffers(r, kafka)
+
 
 # ═════════════════════════════════════════════════════════════════
 #   SPEED LAYER — WebSocket (tick-by-tick real-time)
 # ═════════════════════════════════════════════════════════════════
 
 async def _write_tick_redis(r: aioredis.Redis, tick: dict):
-    """Atomic write: tick data + sorted set membership."""
-    sym = tick["symbol"]
-    ts = tick["time"]
-    pipe = r.pipeline()
-    pipe.set(f"vnstock:tick:{sym}", json.dumps(tick))
-    pipe.zadd("vnstock:ticks:all", {sym: ts})
-    await pipe.execute()
+    """Buffer tick write — flushed every 200ms by _buffer_flusher."""
+    _tick_buffer[tick["symbol"]] = tick
 
 
 async def _publish_kafka(kafka: AIOKafkaProducer, tick: dict):
-    """Publish tick as Confluent Avro to Kafka (fire-and-forget, never blocks event loop)."""
+    """Buffer Kafka publish — flushed every 200ms by _buffer_flusher."""
     if kafka is None or _avro_schema_id < 0:
         return
-    try:
-        key = tick["symbol"].encode("utf-8")
-        value = _encode_avro(tick)
-        # Fire-and-forget: create_task so Kafka timeout never blocks Redis/WS handlers
-        fut = await kafka.send(KAFKA_TOPIC, key=key, value=value)
-        _stats["kafka_sent"] += 1
-    except Exception as e:
-        _stats["errors"] += 1
-        if _stats["errors"] % 500 == 1:  # Log every 500th error to avoid flooding
-            logger.error("Kafka publish error: %s", e)
+    _kafka_buffer.append(tick)
 
 
 async def _handle_trade(r: aioredis.Redis, kafka: AIOKafkaProducer, trade: Trade):
@@ -282,6 +328,10 @@ async def _handle_ohlc_1m(r: aioredis.Redis, kafka: AIOKafkaProducer, ohlc: Ohlc
     try:
         sym = ohlc.symbol
         ts_ms = int(ohlc.time) * 1000 if int(ohlc.time) < 1e12 else int(ohlc.time)
+        # Guard: reject T-1 replay data (timestamp older than 5 minutes)
+        ts_sec = ts_ms // 1000 if ts_ms > 1e12 else ts_ms
+        if abs(time.time() - ts_sec) > 300:
+            return
         tick = {
             "symbol": sym, "time": ts_ms,
             "open": float(ohlc.open), "high": float(ohlc.high),
@@ -298,23 +348,21 @@ async def _handle_ohlc_1m(r: aioredis.Redis, kafka: AIOKafkaProducer, ohlc: Ohlc
 
 
 async def _handle_ohlc_1d(r: aioredis.Redis, ohlc: Ohlc):
-    """Daily OHLC → Redis daily data (merge with existing secdef)."""
+    """Daily OHLC → buffer daily data (merge with existing buffer only, no Redis read)."""
     try:
         sym = ohlc.symbol
-        # Read existing daily data to preserve secdef fields
-        existing_raw = await r.get(f"vnstock:daily:{sym}")
-        daily = json.loads(existing_raw) if existing_raw else {}
+        # Merge with buffer only — batch layer supplies prevClose every 60s
+        daily = _daily_buffer.get(sym, {})
         daily.update({
             "symbol": sym,
             "todayOpen": float(ohlc.open), "todayHigh": float(ohlc.high),
             "todayLow": float(ohlc.low), "todayClose": float(ohlc.close),
             "todayVol": int(ohlc.volume),
         })
-        # Recompute changePct if we have prevClose (from secdef)
         ref = daily.get("prevClose", 0)
         if ref and ref > 0:
             daily["changePct"] = round(((float(ohlc.close) - ref) / ref) * 100, 4)
-        await r.set(f"vnstock:daily:{sym}", json.dumps(daily))
+        _daily_buffer[sym] = daily
         _stats["ws_ohlc_1d"] += 1
     except Exception as e:
         _stats["errors"] += 1
@@ -334,7 +382,7 @@ async def _handle_secdef(r: aioredis.Redis, sd: SecurityDefinition):
 
 
 async def _handle_quote(r: aioredis.Redis, quote: Quote):
-    """Quote (bid/ask depth) → Redis."""
+    """Quote (bid/ask depth) → buffer."""
     try:
         sym = quote.symbol
         q = {
@@ -344,7 +392,7 @@ async def _handle_quote(r: aioredis.Redis, quote: Quote):
             "totalBidQtty": quote.totalBidQtty,
             "totalOfferQtty": quote.totalOfferQtty,
         }
-        await r.set(f"vnstock:quote:{sym}", json.dumps(q))
+        _quote_buffer[sym] = q
         _stats["ws_quote"] += 1
     except Exception as e:
         _stats["errors"] += 1
@@ -365,7 +413,7 @@ async def ws_speed_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
             client = TradingClient(
                 api_key=DNSE_API_KEY, api_secret=DNSE_API_SECRET,
                 base_url=DNSE_WS_URL, encoding=ENCODING,
-                auto_reconnect=True, max_retries=100,
+                auto_reconnect=False, max_retries=100,
                 heartbeat_interval=25.0, timeout=60.0,
             )
 
@@ -441,13 +489,25 @@ async def ws_speed_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
 
             logger.info("[Speed Layer] All subscriptions active — streaming tick-by-tick")
 
-            # Keep alive until stop
+            # Keep alive until stop — monitor connection health
             while not stop_event.is_set():
                 await asyncio.sleep(1)
+                # Detect dead _message_handler or lost connection
+                if hasattr(client, '_message_handler_task') and client._message_handler_task.done():
+                    logger.warning("[Speed Layer] Message handler task died — forcing full reconnect")
+                    break
+                if not client._connection.is_connected:
+                    logger.warning("[Speed Layer] Connection lost — forcing full reconnect")
+                    break
 
-            await client.disconnect()
-            logger.info("[Speed Layer] Disconnected gracefully")
-            return
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            if stop_event.is_set():
+                logger.info("[Speed Layer] Disconnected gracefully")
+                return
+            logger.info("[Speed Layer] Reconnecting with fresh TradingClient...")
 
         except Exception as e:
             logger.error("[Speed Layer] WebSocket error: %s — reconnecting in 5s", e)
@@ -597,16 +657,69 @@ async def rest_batch_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
             results = await asyncio.gather(*tasks, return_exceptions=True)
             ticks = [r_ for r_ in results if isinstance(r_, dict)]
 
-            if ticks and kafka and _avro_schema_id >= 0:
+            if ticks:
+                # Batch MGET existing tick timestamps to avoid 1000 individual GET calls
+                tick_keys = [f"vnstock:tick:{t['symbol']}" for t in ticks]
+                existing_raws = await r.mget(tick_keys)
+                existing_map = {}
+                for i, raw in enumerate(existing_raws):
+                    if raw:
+                        existing_map[ticks[i]["symbol"]] = json.loads(raw)
+
+                pipe = r.pipeline()
                 for tick in ticks:
-                    try:
-                        key = tick["symbol"].encode("utf-8")
-                        value = _encode_avro(tick)
-                        await kafka.send(KAFKA_TOPIC, key=key, value=value)
-                        _stats["kafka_sent"] += 1
-                    except Exception as e:
-                        _stats["errors"] += 1
-                        logger.error("Kafka batch publish error: %s", e)
+                    sym = tick["symbol"]
+                    existing = existing_map.get(sym)
+                    if existing:
+                        et = existing.get("time", 0)
+                        et = et // 1000 if et > 1e12 else et
+                        tt = tick["time"] // 1000 if tick["time"] > 1e12 else tick["time"]
+                        if tt <= et:
+                            continue  # WS data is newer, skip
+                    tick_for_redis = dict(tick, source="DNSE")
+                    pipe.set(f"vnstock:tick:{sym}", json.dumps(tick_for_redis))
+                    pipe.zadd("vnstock:ticks:all", {sym: tick["time"]})
+                await pipe.execute()
+
+                # Batch MGET daily data, update todayClose from tick prices
+                daily_keys = [f"vnstock:daily:{t['symbol']}" for t in ticks]
+                daily_raws = await r.mget(daily_keys)
+                daily_pipe = r.pipeline()
+                for i, tick in enumerate(ticks):
+                    raw = daily_raws[i]
+                    if not raw:
+                        continue
+                    daily = json.loads(raw)
+                    tc = float(tick["close"])
+                    th = float(tick["high"])
+                    tl = float(tick["low"])
+                    updated = False
+                    if tc > 0 and tc != daily.get("todayClose", 0):
+                        daily["todayClose"] = tc
+                        updated = True
+                    if th > daily.get("todayHigh", 0):
+                        daily["todayHigh"] = th
+                        updated = True
+                    if tl > 0 and (daily.get("todayLow", 0) <= 0 or tl < daily.get("todayLow", 999999)):
+                        daily["todayLow"] = tl
+                        updated = True
+                    if updated:
+                        ref = daily.get("prevClose", 0) or daily.get("basicPrice", 0)
+                        if ref > 0:
+                            daily["changePct"] = round(((daily["todayClose"] - ref) / ref) * 100, 4)
+                        daily_pipe.set(f"vnstock:daily:{tick['symbol']}", json.dumps(daily))
+                await daily_pipe.execute()
+
+                if kafka and _avro_schema_id >= 0:
+                    for tick in ticks:
+                        try:
+                            key = tick["symbol"].encode("utf-8")
+                            value = _encode_avro(tick)
+                            await kafka.send(KAFKA_TOPIC, key=key, value=value)
+                            _stats["kafka_sent"] += 1
+                        except Exception as e:
+                            _stats["errors"] += 1
+                            logger.error("Kafka batch publish error: %s", e)
                 _stats["rest_candles"] += len(ticks)
 
             elapsed = time.time() - cycle_start
@@ -666,14 +779,19 @@ async def main():
     except RuntimeError as e:
         logger.error("Schema Registry unavailable: %s — Kafka disabled", e)
 
-    # Connect Redis (async)
+    # Connect Redis (async) — use connection pool to prevent port exhaustion
+    # With 1000+ symbols each generating ticks, unlimited connections will exhaust
+    # ephemeral ports (~65k). Pool of 32 connections is plenty for all operations.
     r = None
     for attempt in range(30):
         try:
-            r = aioredis.Redis(host=REDIS_HOST, port=REDIS_PORT,
-                               decode_responses=True)
+            pool = aioredis.ConnectionPool(
+                host=REDIS_HOST, port=REDIS_PORT,
+                decode_responses=True, max_connections=32,
+            )
+            r = aioredis.Redis(connection_pool=pool)
             await r.ping()
-            logger.info("Redis connected: %s:%d", REDIS_HOST, REDIS_PORT)
+            logger.info("Redis connected: %s:%d (pool=32)", REDIS_HOST, REDIS_PORT)
             break
         except Exception as e:
             logger.warning("Redis not ready (attempt %d/30): %s", attempt + 1, e)
@@ -727,7 +845,8 @@ async def main():
         except NotImplementedError:
             pass  # Windows
 
-    # Launch both layers + stats reporter
+    # Launch both layers + stats reporter + buffer flusher
+    flush_task = asyncio.create_task(_buffer_flusher(r, kafka, stop_event))
     ws_task    = asyncio.create_task(ws_speed_layer(r, kafka, symbol_lists, stop_event))
     rest_task  = asyncio.create_task(rest_batch_layer(r, kafka, all_symbols, stop_event))
     stats_task = asyncio.create_task(_stats_reporter(stop_event))
@@ -738,6 +857,7 @@ async def main():
         pass
 
     # Cleanup
+    flush_task.cancel()
     ws_task.cancel()
     rest_task.cancel()
     stats_task.cancel()
