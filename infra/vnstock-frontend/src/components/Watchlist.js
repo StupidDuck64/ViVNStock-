@@ -90,12 +90,17 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
         {filtered.map((s) => {
           const tick = prices[s.symbol];
           const daily = dailyMap[s.symbol];
-          // Use live tick price as primary (real-time), fallback to daily for off-hours
-          const price = tick?.close || daily?.todayClose || 0;
-          const ref = daily?.basicPrice || daily?.prevClose || 0;
-          const changePct = (price && ref > 0)
-            ? ((price - ref) / ref) * 100
-            : (daily?.changePct ?? 0);
+          // Priority: daily.todayClose (REST REST batch, accurate) > tick.close (may be stale
+          // Iceberg fallback from out-of-session Trino query) > 0
+          const price = daily?.todayClose || tick?.close || 0;
+          // changePct: prefer pre-computed daily.changePct (uses prevClose as base).
+          // Only fall back to manual calc if neither daily field exists.
+          const changePct = daily?.changePct !== undefined && daily?.changePct !== null
+            ? daily.changePct
+            : (() => {
+                const ref = daily?.basicPrice || daily?.prevClose || 0;
+                return (price && ref > 0) ? ((price - ref) / ref) * 100 : 0;
+              })();
           const ceil = daily?.ceilingPrice || 0;
           const floor = daily?.floorPrice || 0;
 

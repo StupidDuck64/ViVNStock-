@@ -415,7 +415,12 @@ export default function CandlestickChart({
 
       if (candles.length > 0) {
         let last = candles[candles.length - 1];
-        
+
+        // Initialize liveCandleRef from last historical candle so the poll-fallback
+        // useEffect (latestPrice) can patch the live close even without a WS tick.
+        // Without this, liveCandleRef stays null and the last candle is frozen.
+        liveCandleRef.current = { ...last };
+
         try {
           // Fetch current real-time state to ensure chart accurately reflects final ATC or latest tick
           // Since history candles might lag by a few minutes or miss the final auction match
@@ -424,6 +429,7 @@ export default function CandlestickChart({
           if (livePrice != null && livePrice > 0 && livePrice !== last.close) {
             // Update the last candle's close so the chart displays the correct current real-time price
             last = { ...last, close: livePrice };
+            liveCandleRef.current = { ...last };
             candleRef.current.update(last);
           }
         } catch (e) {
