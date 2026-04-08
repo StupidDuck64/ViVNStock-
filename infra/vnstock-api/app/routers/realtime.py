@@ -229,7 +229,38 @@ async def get_realtime(
                 results.append(tick)
         return results
 
-    # Fallback: Trino/Iceberg (Redis empty, producer offline)
+    # Fallback 1: Redis daily keys — much faster than Trino, correct after market close
+    cursor = b"0"
+    daily_keys = []
+    while True:
+        cursor, batch = await r.scan(cursor, match="vnstock:daily:*", count=500)
+        daily_keys.extend(batch)
+        if cursor == b"0" or cursor == 0:
+            break
+    if daily_keys:
+        pipe = r.pipeline()
+        for k in daily_keys:
+            pipe.get(k)
+        daily_vals = await pipe.execute()
+        results = []
+        for k, v in zip(daily_keys, daily_vals):
+            if not v:
+                continue
+            d = json.loads(v)
+            sym = d.get("symbol") or (k.decode() if isinstance(k, bytes) else k).split(":")[-1]
+            results.append({
+                "symbol": sym,
+                "open":   d.get("todayOpen", 0),
+                "high":   d.get("todayHigh", 0),
+                "low":    d.get("todayLow", 0),
+                "close":  d.get("todayClose", 0),
+                "volume": d.get("todayVol", 0),
+                "source": "redis_daily",
+            })
+        if results:
+            return results
+
+    # Fallback 2: Trino/Iceberg (Redis completely empty — producer never ran)
     return _trino_latest_ticks_batch([])
 
 

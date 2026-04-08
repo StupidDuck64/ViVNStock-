@@ -618,13 +618,16 @@ def _fetch_daily(symbol: str) -> dict | None:
             today_low = float(data["l"][n - 1])
             today_vol = int(data["v"][n - 1])
         else:
-            # Market hasn't started yet today, so the latest data is yesterday
-            prev_close = float(data["c"][n - 1])
-            today_close = prev_close
-            today_open = float(data["c"][n - 1])
-            today_high = float(data["h"][n - 1])
-            today_low = float(data["l"][n - 1])
-            today_vol = 0
+            # Market hasn't started yet today — latest available data is the most recently
+            # completed session (yesterday).  Show yesterday's return vs the day before:
+            #   prevClose  = session-before-yesterday's close  (= yesterday's reference/thamChieu)
+            #   todayClose = yesterday's official close
+            prev_close  = float(data["c"][n - 2]) if n >= 2 else float(data["c"][n - 1])
+            today_close = float(data["c"][n - 1])
+            today_open  = float(data["o"][n - 1])
+            today_high  = float(data["h"][n - 1])
+            today_low   = float(data["l"][n - 1])
+            today_vol   = int(data["v"][n - 1])
 
         ceiling = round(prev_close * 1.07, 2)
         floor_p = round(prev_close * 0.93, 2)
@@ -658,13 +661,9 @@ async def rest_batch_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
     while not stop_event.is_set():
         cycle_start = time.time()
 
-        if not is_market_open() and not first_run:
-            await asyncio.sleep(60)
-            continue
-        first_run = False
-
         try:
-            # ─── Daily secdef refresh (every 5 min, REST fallback) ───
+            # ─── Daily secdef refresh — runs regardless of market hours so that
+            #     prevClose / changePct stay correct overnight and on weekends. ───
             if cycle_start - last_daily_fetch >= DAILY_REFRESH:
                 logger.info("[Batch Layer] Fetching daily candles for secdef...")
                 tasks = [loop.run_in_executor(executor, _fetch_daily, sym)
@@ -693,6 +692,12 @@ async def rest_batch_layer(r: aioredis.Redis, kafka: AIOKafkaProducer,
                     logger.info("[Batch Layer] Daily secdef: %d/%d symbols",
                                 len(daily_list), len(all_symbols))
                 last_daily_fetch = cycle_start
+
+            # Skip 1m-candle fetch when market is closed (daily refresh above still runs)
+            if not is_market_open() and not first_run:
+                await asyncio.sleep(60)
+                continue
+            first_run = False
 
             # ─── Finalized 1m candles → Kafka ───────────────────
             logger.info("[Batch Layer] Fetching finalized 1m candles...")

@@ -83,9 +83,14 @@ export default function App() {
     const id = setInterval(async () => {
       try {
         const data = await fetchSummary(symbol);
-        if (data.tick) handlePriceUpdate(data.tick);
         if (data.secdef) setSecdef(data.secdef);
         if (data.daily) setDaily(data.daily);
+        // Use daily.todayClose as authoritative price — tick.close may be a stale
+        // Iceberg 1m candle captured before the official session close.
+        const close = data.daily?.todayClose || data.tick?.close;
+        if (close != null && close > 0) {
+          handlePriceUpdate({ ...(data.tick || {}), close });
+        }
       } catch (_) {}
     }, 3000);
     return () => clearInterval(id);
