@@ -137,6 +137,7 @@ function TopMoversPanel({ rows, onSelectSymbol }) {
 }
 
 const MARKET_TABS = [
+  { key: "ALL", label: "Tất cả" },
   { key: "VN30", label: "VN30" },
   { key: "HSX", label: "HSX" },
   { key: "HNX", label: "HNX" },
@@ -158,7 +159,7 @@ export default function PriceBoard({ onSelectSymbol }) {
   const [quotes, setQuotes] = useState({});         // symbol → quote
   const [secdefs, setSecdefs] = useState({});       // symbol → secdef
   const [dailyMap, setDailyMap] = useState({});     // symbol → daily (basicPrice, changePct)
-  const [activeTab, setActiveTab] = useState("VN30");
+  const [activeTab, setActiveTab] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState(null);       // { col, dir }
   const intervalRef = useRef(null);
@@ -190,8 +191,8 @@ export default function PriceBoard({ onSelectSymbol }) {
       // Fetch quotes + secdefs in batch for visible symbols
       const visibleSyms = getVisibleSymbols();
       if (visibleSyms.length > 0) {
-        // Batch quote/secdef fetch (pipeline via individual requests — could optimize with batch endpoint)
-        const quotePromises = visibleSyms.slice(0, 50).map(async (sym) => {
+        // Limit per-symbol summary calls to 100 to avoid overwhelming the API
+        const quotePromises = visibleSyms.slice(0, 100).map(async (sym) => {
           try {
             const res = await fetch(`${API}/realtime/summary?symbol=${encodeURIComponent(sym)}`);
             if (res.ok) return await res.json();
@@ -219,7 +220,14 @@ export default function PriceBoard({ onSelectSymbol }) {
   // Helper: get visible symbol list
   const getVisibleSymbols = useCallback(() => {
     let syms = [];
-    if (activeTab === "VN30") {
+    if (activeTab === "ALL") {
+      // Show all symbols currently streaming in Redis (sorted alphabetically)
+      syms = Object.keys(ticks).sort();
+      if (syms.length === 0) {
+        // Fallback to full symbols list while ticks are loading
+        syms = symbols.map((s) => s.symbol);
+      }
+    } else if (activeTab === "VN30") {
       syms = VN30_SYMBOLS;
     } else {
       syms = symbols
@@ -236,7 +244,7 @@ export default function PriceBoard({ onSelectSymbol }) {
       syms = syms.filter((s) => s.includes(q));
     }
     return syms;
-  }, [activeTab, symbols, search]);
+  }, [activeTab, symbols, ticks, search]);
 
   // Poll every 2 seconds
   useEffect(() => {
@@ -270,31 +278,17 @@ export default function PriceBoard({ onSelectSymbol }) {
       // 3 best bids
       const bids = [];
       if (quote) {
-        if (Array.isArray(quote.bid)) {
-          quote.bid.slice(0, 3).forEach((b) => bids.push({ price: b.price, vol: b.quantity || b.volume || 0 }));
-        } else {
-          for (let i = 1; i <= 3; i++) {
-            const k = String(i).padStart(2, "0");
-            const p = quote[`bidPrice${k}`] || quote[`bestBidPrice${k}`];
-            const v = quote[`bidVolume${k}`] || quote[`bestBidQtty${k}`];
-            if (p) bids.push({ price: p, vol: v || 0 });
-          }
-        }
+        const bidArr = Array.isArray(quote.bid) ? quote.bid : [];
+        bidArr.slice(0, 3).forEach((b) => bids.push({ price: b.price, vol: b.qty || b.quantity || b.volume || 0 }));
       }
 
-      // 3 best asks
+      // 3 best asks — API field is "ask" (not "offer")
       const asks = [];
       if (quote) {
-        if (Array.isArray(quote.offer)) {
-          quote.offer.slice(0, 3).forEach((a) => asks.push({ price: a.price, vol: a.quantity || a.volume || 0 }));
-        } else {
-          for (let i = 1; i <= 3; i++) {
-            const k = String(i).padStart(2, "0");
-            const p = quote[`offerPrice${k}`] || quote[`bestOfferPrice${k}`];
-            const v = quote[`offerVolume${k}`] || quote[`bestOfferQtty${k}`];
-            if (p) asks.push({ price: p, vol: v || 0 });
-          }
-        }
+        const askArr = Array.isArray(quote.ask) ? quote.ask
+          : Array.isArray(quote.offer) ? quote.offer
+          : [];
+        askArr.slice(0, 3).forEach((a) => asks.push({ price: a.price, vol: a.qty || a.quantity || a.volume || 0 }));
       }
 
       return { sym, close, open, high, low, volume, ref, ceil, floor, change, changePct, bids, asks, totalBidVol: quote?.totalBidQtty || 0, totalAskVol: quote?.totalOfferQtty || 0 };
