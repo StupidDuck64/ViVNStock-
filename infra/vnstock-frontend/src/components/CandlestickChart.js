@@ -72,7 +72,7 @@ function computeIndicator(key, candles, period) {
 }
 
 export default function CandlestickChart({
-  symbol, onPriceUpdate, onQuoteUpdate,
+  symbol, latestPrice, onPriceUpdate, onQuoteUpdate,
   activeTool, drawings, onAddDrawing, toolSettings,
 }) {
   const containerRef = useRef(null);
@@ -502,6 +502,28 @@ export default function CandlestickChart({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Poll fallback: when latestPrice is updated (via 3s HTTP poll in App.js),
+  // patch the chart's last candle so it never lags behind the header price.
+  useEffect(() => {
+    if (!latestPrice || !candleRef.current || !liveCandleRef.current) return;
+    const price = latestPrice.close;
+    if (!price || price <= 0) return;
+    const live = liveCandleRef.current;
+    if (live.close === price) return; // already up-to-date
+    live.high = Math.max(live.high, price);
+    live.low = Math.min(live.low, price);
+    live.close = price;
+    candleRef.current.update({
+      time: live.time, open: live.open,
+      high: live.high, low: live.low, close: live.close,
+    });
+    const arr = candlesRef.current;
+    if (arr.length > 0 && arr[arr.length - 1].time === live.time) {
+      arr[arr.length - 1] = { ...live };
+    }
+    updateIndicatorSeries(arr);
+  }, [latestPrice, updateIndicatorSeries]);
 
   // Cleanup WS on unmount
   useEffect(() => {

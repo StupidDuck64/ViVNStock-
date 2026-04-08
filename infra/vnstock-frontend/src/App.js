@@ -199,6 +199,7 @@ export default function App() {
           <main className="flex-1 relative">
             <CandlestickChart
               symbol={symbol}
+              latestPrice={latestPrice}
               onPriceUpdate={handlePriceUpdate}
               onQuoteUpdate={handleQuoteUpdate}
               activeTool={activeTool}
