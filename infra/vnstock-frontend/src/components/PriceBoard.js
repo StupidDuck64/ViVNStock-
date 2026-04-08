@@ -37,13 +37,12 @@ function TopMoversPanel({ rows, onSelectSymbol }) {
   }, [rows]);
 
   const gainers = useMemo(() => {
-    return sorted.sort((a, b) => b.changePct - a.changePct).slice(0, topN);
+    return [...sorted].sort((a, b) => b.changePct - a.changePct).slice(0, topN);
   }, [sorted, topN]);
 
   const losers = useMemo(() => {
-    return [...rows].filter((r) => r.close > 0 && r.ref > 0)
-      .sort((a, b) => a.changePct - b.changePct).slice(0, topN);
-  }, [rows, topN]);
+    return [...sorted].sort((a, b) => a.changePct - b.changePct).slice(0, topN);
+  }, [sorted, topN]);
 
   const fmtPrice = (v) => v ? (v / 1000).toFixed(2) : "—";
 
@@ -85,7 +84,9 @@ function TopMoversPanel({ rows, onSelectSymbol }) {
                   <span className="text-xs font-semibold text-text-primary">{r.sym}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-mono text-up">+{r.changePct.toFixed(2)}%</span>
+                  <span className={`text-xs font-mono ${
+                    r.changePct >= 6.9 ? "text-purple-400" : "text-up"
+                  }`}>+{r.changePct.toFixed(2)}%</span>
                   <span className="text-[10px] text-text-secondary ml-1.5 font-mono">{fmtPrice(r.close)}</span>
                 </div>
               </div>
@@ -114,7 +115,9 @@ function TopMoversPanel({ rows, onSelectSymbol }) {
                   <span className="text-xs font-semibold text-text-primary">{r.sym}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-mono text-down">{r.changePct.toFixed(2)}%</span>
+                  <span className={`text-xs font-mono ${
+                    r.changePct <= -6.9 ? "text-blue-400" : "text-down"
+                  }`}>{r.changePct.toFixed(2)}%</span>
                   <span className="text-[10px] text-text-secondary ml-1.5 font-mono">{fmtPrice(r.close)}</span>
                 </div>
               </div>
@@ -474,11 +477,19 @@ export default function PriceBoard({ onSelectSymbol }) {
                   <td className="px-1 py-1 text-center text-text-secondary font-mono border-r border-bg-tertiary/30">{row.asks[2] ? fmtVol(row.asks[2].vol) : ""}</td>
 
                   {/* Change */}
-                  <td className={`px-1 py-1 text-center font-mono ${row.change > 0 ? "text-up" : row.change < 0 ? "text-down" : "text-yellow-400"}`}>
+                  <td className={`px-1 py-1 text-center font-mono ${
+                    row.changePct >= 6.9 ? "text-purple-400"
+                    : row.changePct <= -6.9 ? "text-blue-400"
+                    : row.change > 0 ? "text-up" : row.change < 0 ? "text-down" : "text-yellow-400"
+                  }`}>
                     {row.change > 0 ? "+" : ""}{(row.change / 1000).toFixed(2)}
                   </td>
                   {/* Change % */}
-                  <td className={`px-1 py-1 text-center font-mono ${row.changePct > 0 ? "text-up" : row.changePct < 0 ? "text-down" : "text-yellow-400"}`}>
+                  <td className={`px-1 py-1 text-center font-mono ${
+                    row.changePct >= 6.9 ? "text-purple-400"
+                    : row.changePct <= -6.9 ? "text-blue-400"
+                    : row.changePct > 0 ? "text-up" : row.changePct < 0 ? "text-down" : "text-yellow-400"
+                  }`}>
                     {row.changePct > 0 ? "+" : ""}{row.changePct.toFixed(2)}%
                   </td>
                   {/* Total Volume */}

@@ -213,7 +213,7 @@ export default function SectorHeatmap({ onSelectSymbol }) {
       for (const sym of syms) {
         const tick = ticks[sym];
         const daily = dailyData[sym];
-        const ref = daily?.prevClose || 0;
+        const ref = daily?.basicPrice || daily?.prevClose || 0;
 
         // Use realtime tick price if available, otherwise fall back to daily close
         const liveClose = (tick && tick.close) ? tick.close : (daily?.todayClose || 0);
@@ -227,7 +227,7 @@ export default function SectorHeatmap({ onSelectSymbol }) {
         } else if (daily && daily.todayClose) {
           const changePct = daily.changePct || 0;
           const vol = daily.todayVol || 0;
-          stocks.push({ sym, close: daily.todayClose, changePct, volume: vol, ref: daily.prevClose });
+          stocks.push({ sym, close: daily.todayClose, changePct, volume: vol, ref: daily.basicPrice || daily.prevClose });
           totalChangePct += changePct;
           sectorVol += vol;
           activeCount++;

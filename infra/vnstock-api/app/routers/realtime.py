@@ -260,17 +260,23 @@ async def get_daily(
     symbol: str | None = Query(None, description="Stock symbol. Leave empty for all."),
 ):
     """
-    Daily OHLCV with pre-computed changePct (vs previous session close).
+    Daily OHLCV with basicPrice/ceilingPrice/floorPrice merged from secdef.
     Written by producer from DNSE resolution=D candles.
     """
     r = await get_redis()
 
     if symbol:
         sym = symbol.strip().upper()
-        data = await r.get(f"vnstock:daily:{sym}")
-        if not data:
+        daily_raw, secdef_raw = await r.mget(f"vnstock:daily:{sym}", f"vnstock:secdef:{sym}")
+        if not daily_raw:
             return None
-        return json.loads(data)
+        result = json.loads(daily_raw)
+        if secdef_raw:
+            sd = json.loads(secdef_raw)
+            result["basicPrice"] = sd.get("basicPrice")
+            result["ceilingPrice"] = sd.get("ceilingPrice")
+            result["floorPrice"] = sd.get("floorPrice")
+        return result
 
     # All symbols: scan vnstock:daily:* keys
     keys = []
@@ -282,12 +288,33 @@ async def get_daily(
             break
     if not keys:
         return []
+
+    # Derive symbol names from keys (bytes or str)
+    syms = [
+        (k.decode() if isinstance(k, bytes) else k).split(":")[-1]
+        for k in keys
+    ]
+
+    # Single pipeline: N daily gets + N secdef gets
     pipe = r.pipeline()
     for k in keys:
         pipe.get(k)
+    for sym in syms:
+        pipe.get(f"vnstock:secdef:{sym}")
     values = await pipe.execute()
+
+    n = len(keys)
+    daily_values = values[:n]
+    secdef_values = values[n:]
+
     results = []
-    for val in values:
-        if val:
-            results.append(json.loads(val))
+    for daily_val, secdef_val in zip(daily_values, secdef_values):
+        if daily_val:
+            rec = json.loads(daily_val)
+            if secdef_val:
+                sd = json.loads(secdef_val)
+                rec["basicPrice"] = sd.get("basicPrice")
+                rec["ceilingPrice"] = sd.get("ceilingPrice")
+                rec["floorPrice"] = sd.get("floorPrice")
+            results.append(rec)
     return results

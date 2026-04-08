@@ -92,14 +92,25 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
           const daily = dailyMap[s.symbol];
           // Use live tick price as primary (real-time), fallback to daily for off-hours
           const price = tick?.close || daily?.todayClose || 0;
-          // Prefer pre-computed changePct from producer (uses prevClose, same as header)
-          // Recalculate only when we have a live tick price AND a valid reference
           const ref = daily?.basicPrice || daily?.prevClose || 0;
           const changePct = (price && ref > 0)
             ? ((price - ref) / ref) * 100
             : (daily?.changePct ?? 0);
+          const ceil = daily?.ceilingPrice || 0;
+          const floor = daily?.floorPrice || 0;
 
-          const isUp = changePct >= 0;
+          // Color: purple=ceiling, blue=floor, green=up, red=down, yellow=flat
+          const priceClass = (ceil && price >= ceil) ? "text-purple-400"
+            : (floor && price <= floor && price > 0) ? "text-blue-400"
+            : changePct > 0 ? "text-up"
+            : changePct < 0 ? "text-down"
+            : "text-yellow-400";
+          const pctClass = changePct >= 6.9 ? "text-purple-400"
+            : changePct <= -6.9 ? "text-blue-400"
+            : changePct > 0 ? "text-up"
+            : changePct < 0 ? "text-down"
+            : "text-text-secondary";
+
           const isActive = selectedSymbol === s.symbol;
 
           return (
@@ -119,19 +130,11 @@ export default function Watchlist({ selectedSymbol, onSelect }) {
                 </span>
               </div>
               <div className="flex flex-col items-end">
-                <span
-                  className={`font-mono font-medium ${
-                    changePct > 0 ? "text-up" : changePct < 0 ? "text-down" : "text-text-secondary"
-                  }`}
-                >
+                <span className={`font-mono font-medium ${priceClass}`}>
                   {price ? price.toLocaleString("vi-VN") : "—"}
                 </span>
                 {(tick || daily) && (
-                  <span
-                    className={`text-[10px] font-mono ${
-                      changePct > 0 ? "text-up" : changePct < 0 ? "text-down" : "text-text-secondary"
-                    }`}
-                  >
+                  <span className={`text-[10px] font-mono ${pctClass}`}>
                     {changePct > 0 ? "+" : ""}
                     {changePct.toFixed(2)}%
                   </span>
