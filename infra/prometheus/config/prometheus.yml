@@ -48,24 +48,28 @@ scrape_configs:
 
   # ==============================================================================================
   # SCRAPE KAFKA JMX EXPORTER (Consumer Lag, Broker Metrics)
+  # Note: Requires JMX exporter agent configured on Kafka. Enable when kafka has JMX_PORT=9404.
   # ==============================================================================================
-  - job_name: "kafka"
-    static_configs:
-      - targets: ["kafka:9404"]
-    metrics_path: /metrics
+  # - job_name: "kafka"
+  #   static_configs:
+  #     - targets: ["kafka:9404"]
+  #   metrics_path: /metrics
 
   # ==============================================================================================
   # SCRAPE SPARK METRICS (Master + Workers)
+  # Note: Spark standalone UI doesn't expose Prometheus metrics natively.
+  # These targets use the REST API JSON endpoint; metrics are parsed via cAdvisor instead.
+  # To enable native Prometheus metrics, configure spark.metrics.conf with PrometheusServlet.
   # ==============================================================================================
-  - job_name: "spark-master"
-    metrics_path: /metrics/prometheus
-    static_configs:
-      - targets: ["spark-master:8080"]
+  # - job_name: "spark-master"
+  #   metrics_path: /metrics/prometheus
+  #   static_configs:
+  #     - targets: ["spark-master:8080"]
 
-  - job_name: "spark-worker"
-    metrics_path: /metrics/prometheus
-    static_configs:
-      - targets: ["spark-worker-1:8081", "spark-worker-2:8081"]
+  # - job_name: "spark-worker"
+  #   metrics_path: /metrics/prometheus
+  #   static_configs:
+  #     - targets: ["spark-worker-1:8081", "spark-worker-2:8081"]
 
   # ==============================================================================================
   # SCRAPE POSTGRES EXPORTER
@@ -258,27 +262,31 @@ scrape_configs:
   #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
 
   # ==============================================================================================
-  # SCRAPE MINIO V2 METRICS (dev mode — no auth needed for local)
+  # SCRAPE MINIO V2 METRICS
   # ==============================================================================================
   - job_name: "minio_cluster"
     metrics_path: /minio/v2/metrics/cluster
     static_configs:
       - targets: ["minio:9000"]
+    bearer_token: "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW8iLCJleHAiOjQ5MjkzMTk4MjB9.2x9vXFsQq6B9fFsroiO5Sc5cqcatnszQUNq2RiWj7AW1pQRQAVkNoVB2ftGyvytC2ZK4JgMJ8lbwgZJw_Nk_5A"
 
   - job_name: "minio_bucket"
     metrics_path: /minio/v2/metrics/bucket
     static_configs:
       - targets: ["minio:9000"]
+    bearer_token: "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW8iLCJleHAiOjQ5MjkzMTk4MjB9.2x9vXFsQq6B9fFsroiO5Sc5cqcatnszQUNq2RiWj7AW1pQRQAVkNoVB2ftGyvytC2ZK4JgMJ8lbwgZJw_Nk_5A"
 
   - job_name: "minio_resource"
     metrics_path: /minio/v2/metrics/resource
     static_configs:
       - targets: ["minio:9000"]
+    bearer_token: "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW8iLCJleHAiOjQ5MjkzMTk4MjB9.2x9vXFsQq6B9fFsroiO5Sc5cqcatnszQUNq2RiWj7AW1pQRQAVkNoVB2ftGyvytC2ZK4JgMJ8lbwgZJw_Nk_5A"
 
   - job_name: "minio_node"
     metrics_path: /minio/v2/metrics/node
     static_configs:
       - targets: ["minio:9000"]
+    bearer_token: "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW8iLCJleHAiOjQ5MjkzMTk4MjB9.2x9vXFsQq6B9fFsroiO5Sc5cqcatnszQUNq2RiWj7AW1pQRQAVkNoVB2ftGyvytC2ZK4JgMJ8lbwgZJw_Nk_5A"
 
   # ==============================================================================================
   # SCRAPE REDIS EXPORTER

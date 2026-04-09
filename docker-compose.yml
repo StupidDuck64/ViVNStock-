@@ -1868,7 +1868,7 @@ services:
           memory: 512M
     networks:
       - default
-    profiles: [core, datahub, openmetadata]
+    profiles: [core, datahub, openmetadata, monitoring]
 
   elasticsearch-setup:
     depends_on:
@@ -2245,11 +2245,13 @@ services:
       context: ./infra/logstash
     container_name: logstash
     hostname: logstash
+    user: "0"
     environment:
       - LS_JAVA_OPTS=-Xms512m -Xmx512m
     volumes:
       - ./infra/logstash/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro,Z
       - ./infra/logstash/config/jvm.options:/usr/share/logstash/config/jvm.options:ro,Z
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     ports:
       - "5044:5044"
     depends_on:
@@ -2421,8 +2423,6 @@ services:
       REDIS_ADDR: "redis://redis:6379"
     ports:
       - "9121:9121"
-    depends_on:
-      - redis
     deploy:
       resources:
         limits:
