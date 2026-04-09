@@ -380,12 +380,13 @@ async def _handle_ohlc_1d(r: aioredis.Redis, ohlc: Ohlc):
 
 
 async def _handle_secdef(r: aioredis.Redis, sd: SecurityDefinition):
-    """Security definition from exchange WS → Redis secdef (initial fill only).
+    """Security definition from exchange WS → Redis secdef (ceiling/floor/reference prices).
 
-    Writes the official exchange reference prices (basicPrice / ceilingPrice / floorPrice)
-    coming directly from HOSE/HNX/UPCOM via DNSE WS. Used as an initial fill so that
-    changePct is available immediately on startup before the REST batch layer runs.
-    The REST batch layer (_fetch_daily, every 5 min) overwrites with confirmed values.
+    Updates vnstock:secdef:{sym} in Redis.
+    Only sets prevClose in _daily_persist as an INITIAL fill (before REST batch runs).
+    Once REST batch has populated _daily_persist for a symbol, WS SecDef will NOT
+    override prevClose — this prevents stale/delayed WS events from corrupting the
+    correct REST-sourced reference price.
     """
     try:
         sym = sd.symbol
@@ -403,12 +404,18 @@ async def _handle_secdef(r: aioredis.Redis, sd: SecurityDefinition):
             "ceilingPrice": ceiling,
             "floorPrice": floor_p,
         }
-        # Populate persistent store — REST batch overwrites this every 5 min with confirmed data
+        # Only use WS SecDef as prevClose if REST batch hasn't set one yet.
+        # REST batch (_fetch_daily every 5 min) is authoritative and must not be overridden.
         if sym not in _daily_persist:
             _daily_persist[sym] = {}
+        if not _daily_persist[sym].get("prevClose"):
+            # Initial fill — REST batch hasn't run for this symbol yet
+            _daily_persist[sym]["prevClose"] = basic
+        # Always keep basicPrice/ceiling/floor current from exchange WS
         _daily_persist[sym].update({
-            "prevClose": basic, "basicPrice": basic,
-            "ceilingPrice": ceiling, "floorPrice": floor_p,
+            "basicPrice": basic,
+            "ceilingPrice": ceiling,
+            "floorPrice": floor_p,
         })
         await r.set(f"vnstock:secdef:{sym}", json.dumps(secdef_data))
         _stats["ws_secdef"] += 1
