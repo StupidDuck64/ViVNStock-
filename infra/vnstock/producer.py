@@ -610,17 +610,26 @@ def _fetch_daily(symbol: str) -> dict | None:
         
         n = len(data["t"])
         if last_date >= now_vn:
-            # We are in the current trading day
-            prev_close = float(data["c"][n - 2]) if n >= 2 else float(data["c"][n - 1])
+            # API has today's intraday 1D candle (live price accumulating)
+            prev_close  = float(data["c"][n - 2]) if n >= 2 else float(data["c"][n - 1])
             today_close = float(data["c"][n - 1])
-            today_open = float(data["o"][n - 1])
-            today_high = float(data["h"][n - 1])
-            today_low = float(data["l"][n - 1])
-            today_vol = int(data["v"][n - 1])
+            today_open  = float(data["o"][n - 1])
+            today_high  = float(data["h"][n - 1])
+            today_low   = float(data["l"][n - 1])
+            today_vol   = int(data["v"][n - 1])
+        elif is_market_open():
+            # Market is open but the 1D chart API hasn't published today's candle yet.
+            # Yesterday (n-1) IS the official tham chieu (reference price) for today.
+            prev_close  = float(data["c"][n - 1])           # yesterday = tham chieu
+            today_close = float(data["c"][n - 1])           # placeholder; WS 1d handler overrides
+            today_open  = 0                                  # unknown until first tick arrives
+            today_high  = float(data["c"][n - 1])
+            today_low   = float(data["c"][n - 1])
+            today_vol   = 0
         else:
-            # Market hasn't started yet today — latest available data is the most recently
-            # completed session (yesterday).  Show yesterday's return vs the day before:
-            #   prevClose  = session-before-yesterday's close  (= yesterday's reference/thamChieu)
+            # Market is closed / pre-market / weekend.
+            # Show yesterday's completed session results vs the day before.
+            #   prevClose  = day-before-yesterday (= yesterday's thamChieu)
             #   todayClose = yesterday's official close
             prev_close  = float(data["c"][n - 2]) if n >= 2 else float(data["c"][n - 1])
             today_close = float(data["c"][n - 1])

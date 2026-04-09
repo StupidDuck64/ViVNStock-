@@ -61,13 +61,13 @@ def _secdef_from_iceberg(sym: str) -> dict | None:
         cur = conn.cursor()
         cur.execute(
             f"SELECT close FROM iceberg.gold.vnstock_ohlc_1d "
-            f"WHERE symbol = '{sym}' ORDER BY time DESC LIMIT 2"
+            f"WHERE symbol = '{sym}' ORDER BY time DESC LIMIT 1"
         )
         rows = cur.fetchall()
-        if len(rows) < 2:
+        if not rows:
             return None
-        # rows[0] = today (or latest), rows[1] = previous day = reference price
-        prev_close = float(rows[1][0])
+        # rows[0] = most recent COMPLETED session = yesterday = tham chieu for today
+        prev_close = float(rows[0][0])
         if prev_close <= 0:
             return None
         secdef = {
