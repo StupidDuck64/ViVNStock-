@@ -9,3 +9,173 @@ groups:
       annotations:
         summary: Host Memory is underutilized (Instance {{ $labels.instance }})
         description: "Node memory is < 20% for 15 seconds. Consider increasing memory or optimizing usage. (Instance {{ $labels.instance }})\n  Remaining Memory = {{ $value }}%\n  Labels = {{ $labels }}"
+
+    - alert: HostHighCpuUsage
+      expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Host CPU usage > 85% ({{ $labels.instance }})"
+        description: "CPU usage is {{ $value }}%"
+
+    - alert: HostDiskSpaceLow
+      expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Disk usage > 85% on {{ $labels.instance }}"
+        description: "Disk usage is {{ $value }}%"
+
+- name: "Container"
+  rules:
+    - alert: ContainerHighMemoryUsage
+      expr: (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100) > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Container {{ $labels.name }} memory > 90%"
+
+    - alert: ContainerHighCpuUsage
+      expr: (rate(container_cpu_usage_seconds_total{name!=""}[5m]) * 100) > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Container {{ $labels.name }} CPU > 80%"
+
+    - alert: ContainerRestarting
+      expr: increase(container_last_seen{name!=""}[10m]) == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Container {{ $labels.name }} not seen for 5m"
+
+- name: "Kafka"
+  rules:
+    - alert: KafkaConsumerLagHigh
+      expr: kafka_consumer_group_lag > 10000
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kafka consumer group {{ $labels.group }} lag > 10k on {{ $labels.topic }}"
+
+    - alert: KafkaBrokerDown
+      expr: up{job="kafka"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Kafka broker is DOWN"
+
+- name: "Spark"
+  rules:
+    - alert: SparkWorkerDown
+      expr: up{job="spark-worker"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Spark worker {{ $labels.instance }} is DOWN"
+
+    - alert: SparkMasterDown
+      expr: up{job="spark-master"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Spark master is DOWN"
+
+- name: "VNStock-API"
+  rules:
+    - alert: VNStockApiDown
+      expr: up{job="vnstock-api"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "VNStock API is DOWN"
+
+    - alert: VNStockApiHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="vnstock-api"}[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "VNStock API p95 latency > 2s"
+
+    - alert: VNStockApiHighErrorRate
+      expr: rate(http_requests_total{job="vnstock-api",status=~"5.."}[5m]) / rate(http_requests_total{job="vnstock-api"}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "VNStock API error rate > 5%"
+
+- name: "Redis"
+  rules:
+    - alert: RedisDown
+      expr: up{job="redis"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Redis is DOWN"
+
+    - alert: RedisHighMemoryUsage
+      expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Redis memory usage > 85%"
+
+- name: "MinIO"
+  rules:
+    - alert: MinIODown
+      expr: up{job="minio_cluster"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "MinIO is DOWN"
+
+    - alert: MinIODiskUsageHigh
+      expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "MinIO disk free < 15%"
+
+- name: "Airflow"
+  rules:
+    - alert: AirflowSchedulerDown
+      expr: up{job="airflow"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Airflow scheduler/webserver is DOWN"
+
+- name: "Postgres"
+  rules:
+    - alert: PostgresDown
+      expr: up{job="postgres"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "PostgreSQL is DOWN"
+
+    - alert: PostgresHighConnections
+      expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PostgreSQL connections > 80% of max"

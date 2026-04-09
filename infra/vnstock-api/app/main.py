@@ -23,15 +23,19 @@ Endpoints:
 """
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from prometheus_client import (
+    Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST,
+)
 
 from app.config import CORS_ORIGINS
 from app.connections import close_all, get_redis, get_trino_connection
-from app.routers import history, realtime, news, symbols, ws
+from app.routers import history, realtime, news, symbols, ws, gold
 
 logging.basicConfig(
     level=logging.INFO,
@@ -91,8 +95,47 @@ app.add_middleware(
 # GZip — compress responses > 500 bytes (historical candle data can be large)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+# ── Prometheus metrics instruments ──
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total HTTP requests",
+    ["method", "path", "status"],
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds", "HTTP request latency",
+    ["method", "path"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
+)
+ACTIVE_CONNECTIONS = Gauge(
+    "http_active_connections", "Active HTTP connections",
+)
+
+
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    """Record request count + latency for Prometheus scraping."""
+    # Skip metrics endpoint itself to avoid recursion
+    if request.url.path == "/api/metrics":
+        return await call_next(request)
+    ACTIVE_CONNECTIONS.inc()
+    method = request.method
+    path = request.url.path
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration = time.perf_counter() - start
+    REQUEST_COUNT.labels(method=method, path=path, status=response.status_code).inc()
+    REQUEST_LATENCY.labels(method=method, path=path).observe(duration)
+    ACTIVE_CONNECTIONS.dec()
+    return response
+
+
+@app.get("/api/metrics", include_in_schema=False)
+async def metrics():
+    """Prometheus scrape endpoint."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 # ── Register routers ──
-for router in (history.router, realtime.router, news.router, symbols.router, ws.router):
+for router in (history.router, realtime.router, news.router, symbols.router, ws.router, gold.router):
     app.include_router(router)
 
 

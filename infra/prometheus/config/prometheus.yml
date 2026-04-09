@@ -75,11 +75,11 @@ scrape_configs:
       - targets: ["postgres-exporter:9187"]
 
   # ==============================================================================================
-  # SCRAPE VNSTOCK API
+  # SCRAPE VNSTOCK API (Prometheus client metrics)
   # ==============================================================================================
   - job_name: "vnstock-api"
-    metrics_path: /api/health
-    scrape_interval: 30s
+    metrics_path: /api/metrics
+    scrape_interval: 15s
     static_configs:
       - targets: ["vnstock-api:8000"]
 
@@ -258,31 +258,34 @@ scrape_configs:
   #   bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
 
   # ==============================================================================================
-  # SCRAPE MINIO V2 METRICS
+  # SCRAPE MINIO V2 METRICS (dev mode — no auth needed for local)
   # ==============================================================================================
   - job_name: "minio_cluster"
     metrics_path: /minio/v2/metrics/cluster
     static_configs:
       - targets: ["minio:9000"]
-    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
 
   - job_name: "minio_bucket"
     metrics_path: /minio/v2/metrics/bucket
     static_configs:
       - targets: ["minio:9000"]
-    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
 
   - job_name: "minio_resource"
     metrics_path: /minio/v2/metrics/resource
     static_configs:
       - targets: ["minio:9000"]
-    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
 
   - job_name: "minio_node"
     metrics_path: /minio/v2/metrics/node
     static_configs:
       - targets: ["minio:9000"]
-    bearer_token: "<YOUR_MINIO_PROMETHEUS_BEARER_TOKEN>"
+
+  # ==============================================================================================
+  # SCRAPE REDIS EXPORTER
+  # ==============================================================================================
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
 
   # ==============================================================================================
   # SCRAPE CLICKHOUSE DATABASE METRICS

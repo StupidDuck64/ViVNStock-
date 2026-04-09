@@ -25,6 +25,9 @@ echo "MinIO is ready. Setting up buckets and policies..."
 
 BUCKETS=(
   "iceberg"
+  "bronze"
+  "silver"
+  "gold"
   "sandbox"
   "checkpoints"
 )
