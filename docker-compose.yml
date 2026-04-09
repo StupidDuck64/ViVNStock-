@@ -619,6 +619,7 @@ services:
       - "localhost:host-gateway"
     volumes:
       - ./infra/airflow/processing/spark/jobs:/opt/spark/jobs
+      - ./infra/spark/metrics.properties:/opt/bitnami/spark/conf/metrics.properties:ro
     healthcheck:
       test: ["CMD", "pidof", "java"]
       interval: 30s
@@ -663,6 +664,7 @@ services:
       - "localhost:host-gateway"
     volumes:
       - ./infra/airflow/processing/spark/jobs:/opt/spark/jobs
+      - ./infra/spark/metrics.properties:/opt/bitnami/spark/conf/metrics.properties:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://spark-master:8080"]
       interval: 30s
@@ -703,6 +705,7 @@ services:
       - "localhost:host-gateway"
     volumes:
       - ./infra/airflow/processing/spark/jobs:/opt/spark/jobs
+      - ./infra/spark/metrics.properties:/opt/bitnami/spark/conf/metrics.properties:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://spark-master:8080"]
       interval: 30s
@@ -2423,6 +2426,24 @@ services:
       REDIS_ADDR: "redis://redis:6379"
     ports:
       - "9121:9121"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 64M
+    profiles: [monitoring]
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: kafka-exporter
+    hostname: kafka-exporter
+    restart: unless-stopped
+    command:
+      - "--kafka.server=kafka:29092"
+      - "--topic.filter=.*"
+      - "--group.filter=.*"
+    ports:
+      - "9308:9308"
     deploy:
       resources:
         limits:
