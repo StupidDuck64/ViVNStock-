@@ -17,7 +17,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { fetchAllRealtime, fetchAllDaily, fetchSymbols } from "../services/api";
+import { fetchAllRealtime, fetchAllDaily, fetchAllQuotes, fetchSymbols } from "../services/api";
 
 /* ─── Top Movers (Gainers/Losers) side panel ─── */
 const TIME_FILTERS = [
@@ -155,10 +155,9 @@ const API = "/api";
 
 export default function PriceBoard({ onSelectSymbol }) {
   const [symbols, setSymbols] = useState([]);
-  const [ticks, setTicks] = useState({});          // symbol → tick
-  const [quotes, setQuotes] = useState({});         // symbol → quote
-  const [secdefs, setSecdefs] = useState({});       // symbol → secdef
-  const [dailyMap, setDailyMap] = useState({});     // symbol → daily (basicPrice, changePct)
+  const [ticks, setTicks] = useState({});          // symbol → tick (live WS)
+  const [quotes, setQuotes] = useState({});         // symbol → quote (bid/ask)
+  const [dailyMap, setDailyMap] = useState({});     // symbol → daily (basicPrice, changePct, todayClose)
   const [activeTab, setActiveTab] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState(null);       // { col, dir }
@@ -172,10 +171,11 @@ export default function PriceBoard({ onSelectSymbol }) {
   // Batch-fetch all data
   const fetchAll = useCallback(async () => {
     try {
-      // Fetch all ticks + daily data in parallel
-      const [allTicks, dailyList] = await Promise.all([
+      // Fetch ticks + daily + all quotes in parallel — single call each
+      const [allTicks, dailyList, allQuotes] = await Promise.all([
         fetchAllRealtime(),
         fetchAllDaily(),
+        fetchAllQuotes(),
       ]);
       if (Array.isArray(allTicks)) {
         const map = {};
@@ -187,29 +187,8 @@ export default function PriceBoard({ onSelectSymbol }) {
         dailyList.forEach((d) => { if (d?.symbol) dMap[d.symbol] = d; });
         setDailyMap(dMap);
       }
-
-      // Fetch quotes + secdefs in batch for visible symbols
-      const visibleSyms = getVisibleSymbols();
-      if (visibleSyms.length > 0) {
-        // Limit per-symbol summary calls to 100 to avoid overwhelming the API
-        const quotePromises = visibleSyms.slice(0, 100).map(async (sym) => {
-          try {
-            const res = await fetch(`${API}/realtime/summary?symbol=${encodeURIComponent(sym)}`);
-            if (res.ok) return await res.json();
-          } catch (_) {}
-          return null;
-        });
-        const results = await Promise.all(quotePromises);
-        const qMap = { ...quotes };
-        const sMap = { ...secdefs };
-        results.forEach((r) => {
-          if (r) {
-            if (r.quote) qMap[r.symbol] = r.quote;
-            if (r.secdef) sMap[r.symbol] = r.secdef;
-          }
-        });
-        setQuotes(qMap);
-        setSecdefs(sMap);
+      if (allQuotes && typeof allQuotes === "object") {
+        setQuotes(allQuotes);
       }
     } catch (e) {
       console.error("PriceBoard fetch error:", e);
@@ -259,21 +238,25 @@ export default function PriceBoard({ onSelectSymbol }) {
     return visSyms.map((sym) => {
       const tick = ticks[sym];
       const quote = quotes[sym];
-      const secdef = secdefs[sym];
 
       const daily = dailyMap[sym];
-      const close = tick?.close || 0;
-      const open = tick?.open || close;
-      const high = tick?.high || close;
-      const low = tick?.low || close;
-      const volume = tick?.volume || 0;
-      // Use daily.basicPrice (from producer REST batch) as primary ref — always available
-      const ref = daily?.basicPrice || secdef?.basicPrice || daily?.prevClose || open;
-      const ceil = secdef?.ceilingPrice || daily?.ceilingPrice || 0;
-      const floor = secdef?.floorPrice || daily?.floorPrice || 0;
+      // Priority: daily.todayClose (REST batch, authoritative) > tick.close (live WS)
+      const close = daily?.todayClose || tick?.close || 0;
+      const open  = daily?.todayOpen  || tick?.open  || close;
+      const high  = daily?.todayHigh  || tick?.high  || close;
+      const low   = daily?.todayLow   || tick?.low   || close;
+      const volume = daily?.todayVol || tick?.volume || 0;
+      const ref  = daily?.basicPrice  || daily?.prevClose || 0;
+      const ceil = daily?.ceilingPrice || 0;
+      const floor = daily?.floorPrice  || 0;
 
-      const change = close - ref;
-      const changePct = (close && ref > 0) ? (change / ref) * 100 : (daily?.changePct ?? 0);
+      // Use pre-computed daily.changePct as primary — computed by the producer
+      // REST batch from the official tham chieu price, always correct.
+      // Only fall back to manual calc when daily data is absent.
+      const changePct = daily?.changePct != null
+        ? daily.changePct
+        : (close && ref > 0 ? ((close - ref) / ref) * 100 : 0);
+      const change = ref > 0 ? close - ref : 0;
 
       // 3 best bids
       const bids = [];
@@ -293,7 +276,7 @@ export default function PriceBoard({ onSelectSymbol }) {
 
       return { sym, close, open, high, low, volume, ref, ceil, floor, change, changePct, bids, asks, totalBidVol: quote?.totalBidQtty || 0, totalAskVol: quote?.totalOfferQtty || 0 };
     });
-  }, [getVisibleSymbols, ticks, quotes, secdefs, dailyMap]);
+  }, [getVisibleSymbols, ticks, quotes, dailyMap]);
 
   // Sort
   const sortedRows = useMemo(() => {

@@ -63,6 +63,13 @@ export async function fetchAllDaily() {
   return res.json();
 }
 
+// ─── Batch quotes (all bid/ask snapshots in Redis) ────────────
+export async function fetchAllQuotes() {
+  const res = await fetch(`${API}/realtime/quote/all`);
+  if (!res.ok) throw new Error(`Quote batch API ${res.status}`);
+  return res.json(); // { symbol: { bid:[], ask:[] } }
+}
+
 // ─── News (Redis) ─────────────────────────────────────────────
 export async function fetchNews(limit = 20) {
   const res = await fetch(`${API}/news?limit=${limit}`);

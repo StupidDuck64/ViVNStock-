@@ -276,6 +276,35 @@ async def get_quote(
     return json.loads(data)
 
 
+@router.get("/realtime/quote/all")
+async def get_all_quotes():
+    """All bid/ask snapshots currently in Redis — returns {symbol: quote} map.
+    Used by PriceBoard to fetch bid/ask for all symbols in a single call
+    instead of making hundreds of individual /realtime/summary requests.
+    """
+    r = await get_redis()
+    cursor = b"0"
+    keys = []
+    while True:
+        cursor, batch = await r.scan(cursor, match="vnstock:quote:*", count=500)
+        keys.extend(batch)
+        if cursor == b"0" or cursor == 0:
+            break
+    if not keys:
+        return {}
+    pipe = r.pipeline()
+    for k in keys:
+        pipe.get(k)
+    vals = await pipe.execute()
+    result = {}
+    for k, v in zip(keys, vals):
+        if not v:
+            continue
+        sym = (k.decode() if isinstance(k, bytes) else k).split(":")[-1]
+        result[sym] = json.loads(v)
+    return result
+
+
 @router.get("/realtime/secdef")
 async def get_secdef(
     symbol: str = Query(..., description="Stock symbol"),
