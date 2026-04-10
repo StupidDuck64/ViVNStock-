@@ -7,9 +7,9 @@
   "links": [],
   "panels": [
     {
-      "title": "Service Status",
+      "title": "Service Health",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
@@ -23,30 +23,74 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "background", "textMode": "auto" },
       "targets": [
-        { "expr": "up{job=\"vnstock-api\"}", "legendFormat": "VNStock API", "refId": "A" },
+        { "expr": "up{job=\"vnstock-api\"}", "legendFormat": "API", "refId": "A" },
         { "expr": "up{job=\"kafka\"}", "legendFormat": "Kafka", "refId": "B" },
-        { "expr": "up{job=\"spark-master\"}", "legendFormat": "Spark Master", "refId": "C" },
+        { "expr": "up{job=\"spark-master\"}", "legendFormat": "Spark", "refId": "C" },
         { "expr": "up{job=\"redis\"}", "legendFormat": "Redis", "refId": "D" },
         { "expr": "up{job=\"minio_cluster\"}", "legendFormat": "MinIO", "refId": "E" },
-        { "expr": "up{job=\"postgres\"}", "legendFormat": "Postgres", "refId": "F" },
-        { "expr": "up{job=\"airflow\"}", "legendFormat": "Airflow", "refId": "G" },
-        { "expr": "up{job=\"trino\"}", "legendFormat": "Trino", "refId": "H" }
+        { "expr": "up{job=\"trino\"}", "legendFormat": "Trino", "refId": "F" }
       ]
     },
     {
-      "title": "VNStock API — Request Rate (req/s)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "title": "Host Resources",
+      "type": "gauge",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 3 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "sum(rate(http_requests_total{job=\"vnstock-api\"}[1m])) by (method, path)", "legendFormat": "{{method}} {{path}}", "refId": "A" }
+        { "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "legendFormat": "RAM", "refId": "A" },
+        { "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100", "legendFormat": "Disk", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] },
+          "max": 100
+        }
+      }
+    },
+    {
+      "title": "Redis — Memory / Keys",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "expr": "redis_memory_used_bytes", "legendFormat": "Memory Used", "refId": "A" },
+        { "expr": "redis_db_keys{db=\"db0\"}", "legendFormat": "Keys (db0)", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Memory Used" }, "properties": [{ "id": "unit", "value": "bytes" }] },
+          { "matcher": { "id": "byName", "options": "Keys (db0)" }, "properties": [{ "id": "unit", "value": "short" }] }
+        ]
+      }
+    },
+    {
+      "title": "Spark Workers / Kafka Lag",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 3 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "graphMode": "none", "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "expr": "count(up{job=\"spark-worker\"} == 1)", "legendFormat": "Spark Workers", "refId": "A" },
+        { "expr": "sum(kafka_consumergroup_lag{topic!='__consumer_offsets'})", "legendFormat": "Kafka Total Lag", "refId": "B" }
+      ]
+    },
+    {
+      "title": "API — Request Rate & Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total{job=\"vnstock-api\"}[1m])) by (path)", "legendFormat": "{{path}} req/s", "refId": "A" }
       ],
       "fieldConfig": { "defaults": { "unit": "reqps" } }
     },
     {
-      "title": "VNStock API — p95 Latency",
+      "title": "API — p95 Response Time",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"vnstock-api\"}[5m])) by (le, path))", "legendFormat": "p95 {{path}}", "refId": "A" }
@@ -54,81 +98,18 @@
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
     {
-      "title": "Kafka — Consumer Group Lag",
+      "title": "Kafka — Consumer Lag by Topic",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 15 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "kafka_consumergroup_lag{topic!='__consumer_offsets'}", "legendFormat": "{{consumergroup}} / {{topic}} / {{partition}}", "refId": "A" }
+        { "expr": "sum(kafka_consumergroup_lag{topic!='__consumer_offsets'}) by (topic)", "legendFormat": "{{topic}}", "refId": "A" }
       ]
     },
     {
-      "title": "Kafka — Messages In (msg/s)",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "sum(rate(kafka_topic_partition_current_offset{topic!='__consumer_offsets'}[5m])) by (topic)", "legendFormat": "{{topic}}", "refId": "A" }
-      ],
-      "fieldConfig": { "defaults": { "unit": "msg/s" } }
-    },
-    {
-      "title": "Spark — Active Executors",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "count(up{job=\"spark-worker\"} == 1)", "legendFormat": "Workers", "refId": "A" }
-      ]
-    },
-    {
-      "title": "Redis — Memory Usage",
-      "type": "gauge",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "redis_memory_used_bytes", "legendFormat": "Used", "refId": "A" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 134217728 }, { "color": "red", "value": 268435456 }] },
-          "max": 536870912
-        }
-      }
-    },
-    {
-      "title": "Redis — Keys Count",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "redis_db_keys{db=\"db0\"}", "legendFormat": "db0 keys", "refId": "A" }
-      ]
-    },
-    {
-      "title": "Redis — Ops/sec",
-      "type": "timeseries",
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "rate(redis_commands_processed_total[1m])", "legendFormat": "ops/s", "refId": "A" }
-      ],
-      "fieldConfig": { "defaults": { "unit": "ops" } }
-    },
-    {
-      "title": "MinIO — Bucket Object Count",
+      "title": "MinIO — Storage per Bucket",
       "type": "bargauge",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "minio_bucket_usage_object_total", "legendFormat": "{{bucket}}", "refId": "A" }
-      ]
-    },
-    {
-      "title": "MinIO — Bucket Size",
-      "type": "bargauge",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 15 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "expr": "minio_bucket_usage_total_bytes", "legendFormat": "{{bucket}}", "refId": "A" }
@@ -136,92 +117,42 @@
       "fieldConfig": { "defaults": { "unit": "bytes" } }
     },
     {
-      "title": "Container CPU Usage",
+      "title": "Container CPU %",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 22 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "rate(container_cpu_usage_seconds_total{name=~\"vnstock.*|kafka|spark.*|redis|minio|trino|airflow.*|postgres\"}[5m]) * 100", "legendFormat": "{{name}}", "refId": "A" }
+        { "expr": "rate(container_cpu_usage_seconds_total{name=~\"vnstock.*|kafka|spark.*|redis|minio|trino|flink.*\"}[5m]) * 100", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "fieldConfig": { "defaults": { "unit": "percent" } }
     },
     {
-      "title": "Container Memory Usage",
+      "title": "Container Memory",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 22 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "container_memory_usage_bytes{name=~\"vnstock.*|kafka|spark.*|redis|minio|trino|airflow.*|postgres\"}", "legendFormat": "{{name}}", "refId": "A" }
+        { "expr": "container_memory_usage_bytes{name=~\"vnstock.*|kafka|spark.*|redis|minio|trino|flink.*\"}", "legendFormat": "{{name}}", "refId": "A" }
       ],
       "fieldConfig": { "defaults": { "unit": "bytes" } }
     },
     {
-      "title": "Postgres — Active Connections",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "pg_stat_activity_count", "legendFormat": "{{datname}} ({{state}})", "refId": "A" }
-      ]
-    },
-    {
-      "title": "Host — Disk Usage %",
-      "type": "gauge",
-      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 40 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100", "legendFormat": "/ disk", "refId": "A" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] },
-          "max": 100
-        }
-      }
-    },
-    {
-      "title": "Host — RAM Usage %",
-      "type": "gauge",
-      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 40 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        { "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "legendFormat": "RAM", "refId": "A" }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 }] },
-          "max": 100
-        }
-      }
-    },
-    {
-      "title": "Logs — VNStock Producer (Loki)",
+      "title": "Pipeline Errors (Loki)",
       "type": "logs",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 48 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 29 },
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
-        { "expr": "{job=\"vnstock-producer\"} |~ \"ERROR|WARN|CRITICAL\"", "refId": "A" }
-      ]
-    },
-    {
-      "title": "Logs — Airflow (Loki)",
-      "type": "logs",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 56 },
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
-        { "expr": "{job=\"airflow\"} |~ \"ERROR|WARN|CRITICAL\"", "refId": "A" }
+        { "expr": "{job=~\"vnstock-producer|airflow|flink.*\"} |~ \"ERROR|WARN|CRITICAL|Exception\"", "refId": "A" }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["vnstock", "pipeline", "monitoring"],
+  "tags": ["vnstock", "pipeline"],
   "templating": { "list": [] },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "Asia/Ho_Chi_Minh",
   "title": "VNStock Pipeline Overview",
   "uid": "vnstock-pipeline-overview",
-  "version": 1
+  "version": 2
 }

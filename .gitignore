@@ -46,6 +46,16 @@ infra/airflow/logs/
 infra/airflow/plugins/
 
 # ============================================================
+# BACKUPS & DUMPS — NEVER COMMIT
+# ============================================================
+*.tar.gz
+*.sql
+*.sql.gz
+*.dump
+prod_logs.txt
+morning_startup.ps1
+
+# ============================================================
 # DATA / SPARK GENERATED
 # ============================================================
 spark-warehouse/
@@ -64,6 +74,7 @@ metastore_db/
 # TEST / SCRATCH FILES
 # ============================================================
 test_*.py
+test.py
 curl_*.txt
 *.bak
 

@@ -18,6 +18,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fetchAllRealtime, fetchAllDaily, fetchAllQuotes, fetchSymbols } from "../services/api";
+import MarketIndexBar from "./MarketIndexBar";
 
 /* ─── Top Movers (Gainers/Losers) side panel ─── */
 const TIME_FILTERS = [
@@ -324,7 +325,11 @@ export default function PriceBoard({ onSelectSymbol }) {
   };
 
   return (
-    <div className="flex h-full bg-bg-primary text-text-primary">
+    <div className="flex flex-col h-full bg-bg-primary text-text-primary">
+      {/* ─── Market Index Cards (VNINDEX, VN30, HNX30, HNXINDEX) ─── */}
+      <MarketIndexBar />
+
+      <div className="flex flex-1 min-h-0">
       {/* ─── Main table area ─── */}
       <div className="flex flex-col flex-1 min-w-0">
       {/* ─── Header ─── */}
@@ -497,6 +502,7 @@ export default function PriceBoard({ onSelectSymbol }) {
 
       {/* ─── Right panel: Top Gainers / Losers ─── */}
       <TopMoversPanel rows={rows} onSelectSymbol={onSelectSymbol} />
+    </div>
     </div>
   );
 }

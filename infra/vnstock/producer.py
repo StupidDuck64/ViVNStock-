@@ -74,7 +74,8 @@ SCHEMA_REGISTRY  = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8081
 DNSE_API_KEY     = os.getenv("DNSE_API_KEY", "")
 DNSE_API_SECRET  = os.getenv("DNSE_API_SECRET", "")
 DNSE_WS_URL      = os.getenv("DNSE_WS_URL", "wss://ws-openapi.dnse.com.vn")
-DNSE_CHART_URL   = "https://services.entrade.com.vn/chart-api/v2/ohlcs/stock"
+DNSE_CHART_URL       = "https://services.entrade.com.vn/chart-api/v2/ohlcs/stock"
+DNSE_CHART_INDEX_URL = "https://services.entrade.com.vn/chart-api/v2/ohlcs/index"
 ENCODING         = os.getenv("WS_ENCODING", "json")
 
 # Symbol lists
@@ -99,17 +100,27 @@ SUB_CHUNK_SIZE = int(os.getenv("SUB_CHUNK_SIZE", "500"))
 
 _session = None  # requests.Session for REST batch layer
 
+# Set of index symbols — populated by _build_symbol_lists()
+_index_symbols: set[str] = set()
+
+
+def _chart_url(symbol: str) -> str:
+    """Return the correct DNSE chart API URL for a symbol."""
+    return DNSE_CHART_INDEX_URL if symbol in _index_symbols else DNSE_CHART_URL
+
 
 def _parse_symbols(raw: str) -> list[str]:
     return [s.strip().upper() for s in raw.split(",") if s.strip()]
 
 
 def _build_symbol_lists():
+    global _index_symbols
     hose  = _parse_symbols(SYMBOLS_HOSE_RAW)
     hnx   = _parse_symbols(SYMBOLS_HNX_RAW)
     upcom = _parse_symbols(SYMBOLS_UPCOM_RAW)
     deriv = _parse_symbols(SYMBOLS_DERIV_RAW)
     index = _parse_symbols(SYMBOLS_INDEX_RAW)
+    _index_symbols = set(index)
     combined = hose + hnx + upcom + deriv + index
     if not combined:
         combined = _parse_symbols(SYMBOLS_ALL_RAW)
@@ -570,7 +581,7 @@ def _fetch_finalized_candle(symbol: str) -> dict | None:
         "from": now_ts - 3600, "to": now_ts,
     }
     try:
-        resp = _get_session().get(DNSE_CHART_URL, params=params, timeout=5)
+        resp = _get_session().get(_chart_url(symbol), params=params, timeout=5)
         resp.raise_for_status()
         data = resp.json()
         if not data.get("t") or len(data["t"]) < 2:
@@ -603,7 +614,7 @@ def _fetch_daily(symbol: str) -> dict | None:
         "from": now_ts - 86400 * 10, "to": now_ts,
     }
     try:
-        resp = _get_session().get(DNSE_CHART_URL, params=params, timeout=10)
+        resp = _get_session().get(_chart_url(symbol), params=params, timeout=10)
         resp.raise_for_status()
         data = resp.json()
         if not data.get("t") or len(data["t"]) < 2:
