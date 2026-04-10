@@ -1,5 +1,3 @@
-"""Builder for the product dimension (`dim_product_catalog`) using SCD Type 2."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

@@ -1,5 +1,3 @@
-"""Builder for the customer engagement fact table (`fact_customer_engagement`)."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

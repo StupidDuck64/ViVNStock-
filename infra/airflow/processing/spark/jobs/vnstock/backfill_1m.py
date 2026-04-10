@@ -1,31 +1,3 @@
-"""
-[src/hisbackfill_1m] VNStock Historical 1-Minute Backfill
-
-Primary source: VCI via vnstock library (~2.5 years of 1m history).
-Fallback source: DNSE REST API (Bearer token, ~90 days of 1m history).
-
-After fetching 1m data, aggregates to 5m, 15m, 30m, 1h, 4h timeframes.
-Default retention: 900 days (~2.5 years, matching VCI data depth).
-
-Target tables (all Bronze):
-  iceberg.bronze.vnstock_ohlc_1m   — raw 1-minute candles
-  iceberg.bronze.vnstock_ohlc_5m   — aggregated 5-minute
-  iceberg.bronze.vnstock_ohlc_15m  — aggregated 15-minute
-  iceberg.bronze.vnstock_ohlc_30m  — aggregated 30-minute
-  iceberg.bronze.vnstock_ohlc_1h   — aggregated 1-hour
-  iceberg.bronze.vnstock_ohlc_4h   — aggregated 4-hour
-
-Write modes:
-  --mode overwrite  (default) full replacement — use for initial historical load
-  --mode append     incremental — safe to re-run daily for recent days
-
-Usage:
-  spark-submit vnstock/backfill_1m.py \
-    --symbols VCB,HPG,FPT \
-    --days 900 \
-    --mode append
-"""
-
 import argparse
 import logging
 import os

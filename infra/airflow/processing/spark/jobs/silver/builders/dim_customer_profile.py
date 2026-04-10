@@ -1,5 +1,3 @@
-"""Builder for `dim_customer_profile` from users + customer_segments (SCD Type 2)."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

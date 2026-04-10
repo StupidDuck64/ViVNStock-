@@ -1,7 +1,3 @@
-"""Policies – OCP: compose alternative behaviors without changing services.
-
-Contains FaultPolicy (bad-record injection) and CanonicalInventory.
-"""
 from __future__ import annotations
 
 import random

@@ -1,7 +1,3 @@
-"""Interactions Service – SRP: build and publish CustomerInteraction events.
-
-DIP: depends on EventPublisher + SchemaEncoder + policies.
-"""
 from __future__ import annotations
 
 import random

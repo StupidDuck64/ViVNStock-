@@ -1,7 +1,3 @@
-"""DIP Ports – repositories for Postgres access.
-
-SRP: define needs; implementations live under adapters/postgres.
-"""
 from typing import Iterable, Optional, Tuple
 
 

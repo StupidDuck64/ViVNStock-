@@ -1,28 +1,3 @@
-"""
-Airflow DAG that starts Kafka stream and Debezium CDC topic ingestion into the Bronze layer.
-
-Defines Airflow tasks for ingesting data from Kafka into Bronze Iceberg tables.
-Handles two categories of data sources:
-  1. Multi-topic aggregation: Merges multiple Kafka topics into one Bronze table (raw_events)
-  2. CDC streams: Maps each Debezium CDC topic (from PostgreSQL) to its own Bronze table
-
-Configured stream targets:
-  - raw_events: Aggregated from 5 demo topics (orders, payments, shipments,
-                inventory-changes, interactions)
-  - 7 CDC topics: users, products, inventory, warehouse_inventory, suppliers,
-                  customer_segments, warehouses
-
-Each stream config contains:
-  - type:              "multi_topic" or "single_topic"
-  - topics/topic:      Kafka topic name(s)
-  - table:             Target Iceberg table (iceberg.bronze.*)
-  - checkpoint:        Spark Structured Streaming checkpoint directory
-  - application:       Spark job script (bronze_events_kafka_stream.py or bronze_cdc_stream.py)
-  - batch_size:        Records processed per micro-batch
-  - starting_offsets:  "earliest" (replay all) or "latest" (only new messages)
-  - expire_days:       Iceberg snapshot retention window
-"""
-
 import os
 from datetime import datetime
 from typing import Any

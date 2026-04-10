@@ -1,29 +1,3 @@
-"""
-Orchestrate a dbt Core project as an Airflow task group using Astronomer Cosmos.
-
-Runs all dbt models against the Spark Thrift Server + Iceberg backend.
-dbt (data build tool) is an SQL-first transformation framework with Jinja templating.
-
-Features:
-  - Cosmos: Native Airflow integration for dbt (auto-generates Airflow tasks from dbt models)
-  - dbt-spark[PyHive]: dbt adapter for Apache Spark via Thrift Server
-  - Iceberg: Table format for managed Spark tables
-  - Task Groups: Logical grouping of dbt tasks in the Airflow UI
-
-Workflow:
-  1. Load dbt project configuration (project path, dbt executable)
-  2. Configure the Spark profile (connection to Spark Thrift Server)
-  3. Define ExecutionConfig (path to dbt binary inside the virtual environment)
-  4. Create DbtTaskGroup — Cosmos auto-generates one Airflow task per dbt model
-  5. Cosmos resolves inter-model dependencies from dbt ref() calls in SQL files
-
-Benefits:
-  - Single DAG covers all dbt models (no manual task-per-model boilerplate)
-  - Automatic dependency graph from dbt_manifest.json
-  - Built-in dbt test execution
-  - Incremental runs with dbt state diffing (only re-run changed models)
-"""
-
 from airflow.sdk import dag
 from cosmos import DbtTaskGroup, ProjectConfig, ProfileConfig, ExecutionConfig
 from cosmos.profiles import SparkThriftProfileMapping

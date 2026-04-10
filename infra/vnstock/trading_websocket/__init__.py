@@ -1,8 +1,3 @@
-"""Trading WebSocket SDK for Python.
-
-Async Python client for real-time trading data via WebSocket.
-"""
-
 from .client import TradingClient
 from .models import Trade, Quote, Ohlc, Order, Position, AccountUpdate
 from .exceptions import (

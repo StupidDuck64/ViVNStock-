@@ -1,27 +1,3 @@
-"""
-VNStock API — FastAPI Backend
-
-Serving layer for the VNStock Data Lakehouse.
-Provides OHLCV candlestick data for the TradingView-style frontend.
-
-Architecture:
-  ┌─────────────┐  /api/history   ┌───────┐   SQL    ┌─────────┐
-  │  Frontend   │ ───────────────►│FastAPI │ ────────►│  Trino  │──► Iceberg
-  │ (LW Charts) │  /api/realtime  │       │ ────────►│  Redis  │
-  │             │◄── WebSocket ───│       │          └─────────┘
-  └─────────────┘                 └───────┘
-
-Endpoints:
-  GET  /api/history         — Historical candles from Iceberg (via Trino), 7 timeframes
-  GET  /api/realtime        — Current tick from Redis (single symbol or all)
-  GET  /api/realtime/quote  — Order book bid/ask from Redis
-  GET  /api/realtime/secdef — Reference data (ceiling/floor/reference price)
-  GET  /api/news            — Market news from Redis
-  GET  /api/symbols         — Stock symbol list + classification
-  WS   /api/ws/stream       — WebSocket real-time tick (polls Redis every 1s)
-  GET  /api/health          — Health check Redis + Trino
-"""
-
 import logging
 from contextlib import asynccontextmanager
 

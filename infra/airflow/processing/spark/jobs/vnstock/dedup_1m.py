@@ -1,16 +1,3 @@
-"""
-VNStock Iceberg 1m Table Deduplication
-
-Removes duplicate rows created by the streaming job.
-Rewrites the entire bronze.vnstock_ohlc_1m table keeping only one row
-per (symbol, time) pair, then re-aggregates all higher timeframes.
-
-One-time cleanup job. Safe to run multiple times (idempotent).
-
-Usage:
-  spark-submit vnstock/dedup_1m.py
-"""
-
 import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (

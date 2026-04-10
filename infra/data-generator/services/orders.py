@@ -1,7 +1,3 @@
-"""Orders Service – SRP: build and publish Order -> Payment -> Shipment.
-
-OCP: swap encoders/publishers without code changes here.
-"""
 from __future__ import annotations
 
 import random

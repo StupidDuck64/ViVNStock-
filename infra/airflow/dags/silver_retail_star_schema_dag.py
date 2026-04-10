@@ -1,19 +1,3 @@
-"""
-Airflow DAG for building the Silver layer — Kimball Star Schema.
-
-Defines Airflow tasks that construct the star schema (Kimball dimensional model)
-from Bronze-layer data. Covers dimension tables (Customer, Product, Supplier,
-Warehouse, Date) and fact tables (Order Service, Inventory Position, Customer Engagement).
-
-Workflow:
-  1. Load the Date dimension first (no upstream dependencies)
-  2. Load all other dimension tables in parallel (Customer, Product, Supplier, Warehouse)
-  3. Load fact tables last (depend on all dimensions being ready)
-  4. Run Iceberg maintenance after each table (OPTIMIZE, EXPIRE_SNAPSHOTS, REMOVE_ORPHANS)
-
-Trigger: DAG fires automatically whenever any upstream Bronze dataset is updated.
-"""
-
 import os
 from typing import Dict
 

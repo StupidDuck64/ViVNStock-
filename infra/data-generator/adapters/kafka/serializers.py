@@ -1,7 +1,3 @@
-"""Kafka Schema Encoders – DIP adapters for SchemaEncoder.
-
-Fallback to embedded Avro when registry has no subject.
-"""
 from __future__ import annotations
 
 from typing import Any

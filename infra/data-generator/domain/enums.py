@@ -1,5 +1,3 @@
-"""Enums – SRP: centralize constant lists used across services."""
-
 PAYMENT_METHODS = ["CARD", "APPLE_PAY", "PAYPAL"]
 PAYMENT_STATUS = ["PENDING", "SETTLED", "FAILED"]
 CARRIERS = ["UPS", "DHL", "FEDEX"]

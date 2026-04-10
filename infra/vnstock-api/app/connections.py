@@ -1,17 +1,3 @@
-"""
-Connection pools for Redis (async) and Trino (sync).
-
-Redis: async pool via redis.asyncio — used by /realtime, /news, /ws/stream.
-Trino: sync connection — used by /history (queries Iceberg tables).
-
-Note: The Trino driver is synchronous, so /history endpoint runs in sync mode
-within FastAPI's default thread pool (threadpool for sync def endpoints).
-
-Trino retry: Trino container starts slowly (~30-60s). If the API starts before
-Trino, connections will fail. get_trino_connection() retries 3 times with
-exponential backoff (1s, 2s, 4s) to handle this scenario.
-"""
-
 import logging
 import time
 

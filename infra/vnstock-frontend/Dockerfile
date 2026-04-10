@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# VVS Frontend — Multi-stage Docker build
+# VVStock Frontend — Multi-stage Docker build
 # ═══════════════════════════════════════════════════════════
 # Stage 1: Build React app (node:20-alpine)
 # Stage 2: Serve static via nginx:1.25-alpine

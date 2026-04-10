@@ -1,27 +1,3 @@
-"""
-Shared utilities for Airflow DAGs.
-
-Provides common functions and constants used by all Airflow DAGs related
-to Spark job submission. Contains baseline Spark configuration, required packages,
-environment variables, and Iceberg table maintenance tools.
-
-Key functions:
-- spark_packages(): Returns Spark packages from the Ivy/Maven repository
-- spark_base_conf(): Returns core Spark configuration (Hive Metastore, Iceberg, MinIO)
-- spark_env_vars(): Environment variables for Spark submission (AWS credentials, paths)
-- spark_job_base(): Base path where Spark job files are mounted inside the container
-- spark_utils_py_files(): List of py_files distributed alongside each Spark job
-- iceberg_dataset(): Converts an Iceberg table name into an Airflow Dataset path for lineage tracking
-- iceberg_maintenance(): Runs Iceberg table maintenance (optimize, expire snapshots, remove orphans)
-- maintenance_tasks_for(): Creates PythonOperator maintenance tasks for a given table
-
-Key constants:
-- _SPARK_HOME: Spark installation directory (default: /opt/spark)
-- _JAR_DIR: Directory containing JAR dependency files (default: $SPARK_HOME/jars)
-- _EXTRA_JARS: Required JAR files for Kafka + Iceberg + Hadoop + AWS
-- _BASE_CONF: Dictionary containing all Spark configuration settings
-"""
-
 from __future__ import annotations
 
 import os

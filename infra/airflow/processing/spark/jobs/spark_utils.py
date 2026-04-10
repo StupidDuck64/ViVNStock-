@@ -1,13 +1,3 @@
-"""
-Shared utilities for Spark ingestion jobs.
-
-Contains:
-  - build_spark(): creates an optimised SparkSession
-  - decode_confluent_avro(): decodes Confluent Avro messages from Kafka
-  - schema_id_expr(), payload_size_expr(): reusable Spark SQL Column expressions
-  - ensure_schema(): creates a catalog schema if it does not yet exist
-"""
-
 from __future__ import annotations
 
 import datetime

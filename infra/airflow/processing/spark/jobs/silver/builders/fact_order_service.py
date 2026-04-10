@@ -1,5 +1,3 @@
-"""Builder for the order service fact table (`fact_order_service`)."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

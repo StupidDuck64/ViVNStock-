@@ -1,7 +1,3 @@
-"""Inventory Service – SRP: build and publish inventory change events.
-
-DIP: depends on repositories, encoder, publisher, and policy.
-"""
 from __future__ import annotations
 
 import random

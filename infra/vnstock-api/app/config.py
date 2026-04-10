@@ -1,5 +1,3 @@
-"""VNStock API Configuration."""
-
 import os
 
 # Redis

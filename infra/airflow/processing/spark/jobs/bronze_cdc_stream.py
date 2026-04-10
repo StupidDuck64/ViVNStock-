@@ -1,13 +1,3 @@
-#!/usr/bin/env python3
-"""Ingest a single CDC Kafka topic into a Bronze Iceberg table.
-
-Pipeline:
-1. Read a Kafka topic via Structured Streaming
-2. Decode the Avro payload (Confluent wire format)
-3. Enrich with metadata: schema_id, payload_size, partition, offset, event_time
-4. Append to an Iceberg table using availableNow trigger
-"""
-
 import argparse
 import logging
 import sys

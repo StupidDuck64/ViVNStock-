@@ -1,7 +1,3 @@
-"""Kafka Topics – SRP: create/delete demo topics.
-
-Kept as an adapter to avoid leaking AdminClient into services.
-"""
 from confluent_kafka.admin import AdminClient, NewTopic
 
 from config import Config

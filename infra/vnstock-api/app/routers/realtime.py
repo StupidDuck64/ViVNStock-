@@ -1,24 +1,3 @@
-"""
-GET /api/realtime — Real-time data from Redis (fallback to Trino/Iceberg).
-
-Primary: reads from Redis (data written by Spark streaming job).
-Fallback: if Redis is empty (producer offline), returns latest price from Iceberg 1m table.
-
-Redis key structure:
-  vnstock:tick:{SYMBOL}      → JSON: {symbol, time, open, high, low, close, volume, resolution}
-  vnstock:quote:{SYMBOL}     → JSON: {symbol, bid[], offer[], totalBidQtty, totalOfferQtty}
-  vnstock:secdef:{SYMBOL}    → JSON: {symbol, basicPrice, ceilingPrice, floorPrice, securityStatus}
-  vnstock:expected:{SYMBOL}  → JSON: {symbol, expectedTradePrice, expectedTradeQuantity}
-  vnstock:ticks:all          → Sorted Set (member=symbol, score=last_update_timestamp)
-
-Endpoints:
-  GET /api/realtime            → single symbol or all ticks
-  GET /api/realtime/quote      → depth-of-market (bid/ask 10 levels)
-  GET /api/realtime/secdef     → reference data (ceiling/floor/reference price)
-  GET /api/realtime/expected   → ATO/ATC expected price
-  GET /api/realtime/summary    → overview: tick + quote + secdef for one symbol
-"""
-
 import json
 import logging
 import re

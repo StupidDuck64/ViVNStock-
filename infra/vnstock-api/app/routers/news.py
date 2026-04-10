@@ -1,9 +1,3 @@
-"""
-GET /api/news — Latest financial news from Redis.
-
-Data is populated by vnstock_news_crawler Spark job.
-"""
-
 import json
 
 from fastapi import APIRouter, Query

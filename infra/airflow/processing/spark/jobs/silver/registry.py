@@ -1,10 +1,3 @@
-"""Central registry for Silver table builders.
-
-Each TableBuilder describes how to build one Silver table (dimension or fact),
-including the target table name, build function, primary key, partition columns,
-and whether the builder requires raw_events to be loaded.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

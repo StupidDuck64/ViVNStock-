@@ -1,5 +1,5 @@
 /**
- * App.js — VVS Dashboard (main layout)
+ * App.js — VVStock Dashboard (main layout)
  * ═══════════════════════════════════════════
  *
  * Two tabs:
@@ -107,7 +107,7 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-2 bg-bg-secondary border-b border-bg-tertiary">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-bold tracking-wide">
-            <span className="text-blue-400">VVS</span>{" "}
+            <span className="text-blue-400">VVStock</span>{" "}
             <span className="text-text-secondary font-normal">Dashboard</span>
           </h1>
           <span className="text-xs text-bg-tertiary">│</span>

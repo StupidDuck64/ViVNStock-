@@ -1,7 +1,3 @@
-"""DIP Port – EventPublisher.
-
-Speak in the language of the domain. The infrastructure implements.
-"""
 from typing import Mapping, Optional
 
 

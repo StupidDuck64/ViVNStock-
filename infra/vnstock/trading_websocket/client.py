@@ -1,15 +1,3 @@
-"""
-TradingClient - High-level async WebSocket client for real-time trading data.
-
-This module provides the main TradingClient class that handles:
-- WebSocket connection management with automatic reconnection
-- HMAC authentication
-- Channel subscriptions (market data and private channels)
-- Event-driven message handling
-- Heartbeat monitoring
-- Graceful shutdown
-"""
-
 from typing import Optional, Callable, List, Dict, Any
 import asyncio
 import logging

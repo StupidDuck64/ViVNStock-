@@ -1,5 +1,3 @@
-"""Utilities to clear Spark checkpoint prefixes stored in MinIO (S3-compatible)."""
-
 from __future__ import annotations
 
 import sys

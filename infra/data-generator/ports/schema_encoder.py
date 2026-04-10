@@ -1,7 +1,3 @@
-"""DIP Port – SchemaEncoder.
-
-Decouple services from Avro specifics. Encode to bytes for a given topic.
-"""
 from typing import Any
 
 

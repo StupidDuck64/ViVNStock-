@@ -1,29 +1,3 @@
-"""
-[src/hisbackfill_1d] VNStock Historical Daily Backfill
-
-Source: DNSE REST API (resolution=1D, no rate limit with API key)
-Period: from 2015-01-01 to today
-
-Target table: iceberg.bronze.vnstock_ohlc_1d
-
-Run modes:
-  --run-mode init   Full historical load with createOrReplace.
-                    Pulls the entire history (--start-date to today).
-                    Use for first-time backfill or to rebuild the table.
-
-  --run-mode daily  Smart incremental load using a high-water mark.
-                    Queries Iceberg for MAX(time) per symbol and only
-                    fetches candles newer than that timestamp.
-                    Writes via .append() — safe for scheduled runs.
-
-Usage:
-  # Initial load:
-  spark-submit vnstock/backfill_1d.py --run-mode init --start-date 2015-01-01
-
-  # Scheduled daily:
-  spark-submit vnstock/backfill_1d.py --run-mode daily
-"""
-
 import argparse
 import logging
 import os

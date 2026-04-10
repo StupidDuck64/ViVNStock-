@@ -1,5 +1,3 @@
-"""Expose all dimension and fact build functions for the Silver layer."""
-
 from silver.builders.dim_customer_profile import build_dim_customer_profile
 from silver.builders.dim_date import build_dim_date
 from silver.builders.dim_product_catalog import build_dim_product_catalog

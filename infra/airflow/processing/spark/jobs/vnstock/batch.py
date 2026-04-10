@@ -1,22 +1,3 @@
-"""
-[src/batch] VNStock Bronze Ingest: Kafka → Iceberg Bronze
-
-Reads from VNStock Kafka topics (Avro-encoded with Confluent wire format)
-and writes raw data into Iceberg Bronze tables.
-
-Avro deserialization:
-  1. Strip 5-byte Confluent header: substring(value, 6)
-  2. Parse Avro binary via from_avro() with embedded schema
-
-Uses AvailableNow trigger (bounded streaming) matching lakehouse-oss pattern.
-
-Usage:
-  spark-submit vnstock/vnstock_bronze_stream.py \
-    --topic ohlc_stock \
-    --table iceberg.bronze.vnstock_ohlc_stock \
-    --checkpoint s3a://checkpoints/spark/iceberg/bronze/vnstock_ohlc_stock
-"""
-
 import argparse
 import json
 import logging

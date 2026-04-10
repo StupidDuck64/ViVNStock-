@@ -1,7 +1,3 @@
-"""Kafka Factory – SRP: build producer and encoders.
-
-DIP: callers receive ports, not concrete libs.
-"""
 from __future__ import annotations
 
 from confluent_kafka import SerializingProducer

@@ -1,5 +1,3 @@
-"""Shared utilities for Silver table builders."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F, types as T

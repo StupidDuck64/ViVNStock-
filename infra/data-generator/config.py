@@ -1,7 +1,3 @@
-"""SRP: one place to parse and hold configuration.
-
-Keep it simple; no side effects beyond reading environment.
-"""
 from __future__ import annotations
 
 import os

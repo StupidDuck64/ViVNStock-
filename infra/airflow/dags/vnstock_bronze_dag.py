@@ -1,22 +1,3 @@
-"""
-VNStock Bronze Streaming DAG
-
-Runs the VNStock Spark Structured Streaming job that consumes Confluent Avro
-messages from the 'vnstock.ohlc.realtime' Kafka topic produced by the DNSE
-producer (producer.py / producer_ws.py) and writes micro-batches into
-Iceberg Bronze + Redis.
-
-Topic → Table:
-  vnstock.ohlc.realtime (Confluent Avro) → iceberg.bronze.vnstock_ohlc_1m
-                                          → Redis vnstock:tick:{SYMBOL}
-
-The streaming job runs continuously. This DAG triggers it via SparkSubmitOperator
-with 'AvailableNow' semantics (Airflow kills the app once no new offsets remain).
-For true continuous streaming, run the job outside Airflow (e.g., supervisord).
-
-Maintenance task OPTIMIZE + EXPIRE_SNAPSHOTS runs after each triggered batch.
-"""
-
 import os
 
 from airflow import DAG

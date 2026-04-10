@@ -1,12 +1,3 @@
-"""Data models for market data and private channel updates.
-
-This module provides typed data models for all message types:
-- Market data: Trade, Quote, OHLC, ExpectedPrice, TradeExtra, SecurityDefinition
-- Private channels: Order, Position, AccountUpdate
-
-All models support parsing from both abbreviated (MessagePack) and full (JSON) field names.
-"""
-
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal

@@ -1,25 +1,3 @@
-"""
-GET /api/history — Historical candles from Iceberg (via Trino).
-
-Retrieves OHLCV data from Iceberg tables ingested by Spark.
-Supports 7 timeframes: 1m, 5m, 15m, 30m, 1h, 4h, 1d.
-
-Flow:
-  Frontend → GET /api/history?symbol=VCB&interval=1m&limit=500
-           → FastAPI → check Redis cache
-           → cache miss → Trino SQL → Iceberg table on MinIO
-           → Return [{time, open, high, low, close, volume}, ...]
-
-Deduplication: Streaming job may append duplicate (symbol, time) rows.
-SQL uses ROW_NUMBER() to keep only one row per timestamp.
-
-Redis cache: History responses are cached for 10-60s depending on timeframe
-to reduce Trino load and improve response time for concurrent users.
-
-Trino does not support parameterized queries (?), so we use string formatting.
-Symbol is whitelist-validated via regex to prevent SQL injection.
-"""
-
 import json
 import hashlib
 import logging

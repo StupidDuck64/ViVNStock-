@@ -1,5 +1,3 @@
-"""Builder for the warehouse dimension (`dim_warehouse`): metadata + inventory stats."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

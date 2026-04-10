@@ -1,27 +1,3 @@
-"""
-Airflow DAG that synchronises DAG files and the dbt project from MinIO.
-
-This DAG runs on an hourly schedule and pulls the following from a MinIO
-S3-compatible bucket:
-- Airflow DAG Python files (dags/ prefix)
-- dbt project files  (dbt/ prefix)
-
-Uses Airflow S3Hook to connect to the MinIO endpoint, list objects, and
-download them to the local filesystem. This enables dynamic DAG updates
-from centralised object storage without redeploying the Airflow container.
-
-Workflow:
-1. Connect to the MinIO bucket (configured in Airflow connections)
-2. List S3 keys under the dags/ and dbt/ prefixes
-3. Download files from MinIO to /opt/airflow/dags and /opt/airflow/dbt
-4. Preserve the folder structure (e.g. dbt/models/staging/file.sql)
-
-Use cases:
-- Centralised DAG code management  (version control → MinIO → Airflow)
-- Live dbt model updates            (edit .sql files without restarting Airflow)
-- Multi-environment setups          (Dev/Staging/Prod fetch from different buckets)
-"""
-
 import os
 from datetime import datetime
 from airflow import DAG

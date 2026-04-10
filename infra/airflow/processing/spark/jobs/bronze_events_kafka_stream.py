@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""Ingest multiple Kafka topics into a shared Bronze table (`raw_events`).
-
-Uses availableNow trigger to process a bounded backlog via micro-batches.
-"""
-
 import argparse
 import json
 import logging

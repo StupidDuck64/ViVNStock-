@@ -1,29 +1,3 @@
-"""
-[src/compact] VNStock Bronze → Silver Compaction
-
-Reads Bronze Iceberg tables, deduplicates, and repartitions so that
-each output file stores data for exactly ONE stock symbol.
-
-Pipeline:
-  1. Read Bronze table (raw ingested data)
-  2. Deduplicate by (symbol, time) — keep latest ingest_timestamp
-  3. Repartition by symbol (1 partition = 1 symbol)
-  4. Write to Silver Iceberg table (overwritePartitions)
-
-Target tables (Silver):
-  iceberg.silver.vnstock_ohlc_stock
-  iceberg.silver.vnstock_ohlc_derivative
-  iceberg.silver.vnstock_ohlc_index
-  iceberg.silver.vnstock_quote
-  iceberg.silver.vnstock_expected_price
-  iceberg.silver.vnstock_security_def
-
-Usage:
-  spark-submit vnstock/vnstock_compact.py \
-    --bronze-table iceberg.bronze.vnstock_ohlc_stock \
-    --silver-table iceberg.silver.vnstock_ohlc_stock
-"""
-
 import argparse
 import logging
 

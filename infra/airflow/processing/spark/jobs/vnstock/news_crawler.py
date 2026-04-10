@@ -1,22 +1,3 @@
-"""
-VNStock News Crawler
-
-Scrapes financial news from Vietnamese sources:
-  - CafeF (cafef.vn)
-  - Vietstock (vietstock.vn)
-  - VnEconomy (vneconomy.vn)
-
-Stores results into Redis for real-time API serving.
-
-Redis key structure:
-  vnstock:news:all           → sorted set (score=publish_timestamp)
-  vnstock:news:{source}      → sorted set by source
-  vnstock:news:article:{id}  → article JSON detail
-
-Usage:
-  spark-submit vnstock/vnstock_news_crawler.py --max-pages 3
-"""
-
 import hashlib
 import json
 import logging

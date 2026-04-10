@@ -1,10 +1,3 @@
-"""Cấu hình Airflow Webserver tích hợp Keycloak OAuth2.
-
-Mục tiêu:
-- Đăng nhập SSO qua Keycloak
-- Tự động map role Keycloak sang role Airflow
-- Hỗ trợ auto-register user lần đăng nhập đầu
-"""
 import os
 import logging
 from flask_appbuilder.security.manager import AUTH_OAUTH

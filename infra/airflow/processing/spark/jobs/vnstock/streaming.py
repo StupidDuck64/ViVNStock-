@@ -1,34 +1,3 @@
-"""
-VNStock PySpark Structured Streaming: Kafka → Iceberg + Redis
-
-Lambda Architecture — Speed Layer:
-  Producer (DNSE) → Kafka topic (vnstock.ohlc.realtime, Confluent Avro)
-                  → This job reads from Kafka
-                  → Writes to Iceberg (bronze.vnstock_ohlc_1m) for durability
-                  → Writes to Redis for low-latency frontend serving
-
-Data flow:
-  Kafka (vnstock.ohlc.realtime)  [Confluent Avro wire format]
-    → PySpark Structured Streaming
-    → deserialize Avro via decode_confluent_avro UDF (Schema Registry lookup)
-    → foreachBatch:
-        1. Deduplicate by (symbol, time)
-        2. Append to Iceberg bronze.vnstock_ohlc_1m
-        3. Write latest tick per symbol to Redis
-
-Checkpoint: MinIO (s3a://checkpoints/spark/vnstock/streaming/...)
-
-Redis key structure:
-  vnstock:tick:{SYMBOL}      → latest OHLC tick (JSON)
-  vnstock:ticks:all          → sorted set of all symbols with last-update score
-
-Usage:
-  spark-submit --master spark://spark-master:7077 \\
-    --py-files /opt/spark/jobs/spark_utils.py \\
-    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.6 \\
-    vnstock/streaming.py
-"""
-
 import json
 import logging
 import os
@@ -223,13 +192,16 @@ def main():
     )
 
     # Write stream using foreachBatch (Iceberg + Redis)
+    # Trigger interval: 1 second — minimum practical for Iceberg sink.
+    # Going below 1s causes excessive small Parquet files on MinIO (small files problem).
+    # Redis latency is already <100ms via direct producer write; this path is backup.
     query = parsed.writeStream \
         .foreachBatch(write_batch) \
         .option("checkpointLocation", "s3a://checkpoints/spark/vnstock/streaming/ohlc") \
-        .trigger(processingTime="10 seconds") \
+        .trigger(processingTime="1 seconds") \
         .start()
 
-    logger.info("Streaming query started — processing every 10 seconds")
+    logger.info("Streaming query started — processing every 1 second")
     query.awaitTermination()
 
 

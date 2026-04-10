@@ -1,7 +1,3 @@
-"""
-GET /api/symbols — Available stock symbols.
-"""
-
 from fastapi import APIRouter
 from app.config import DEFAULT_SYMBOLS
 

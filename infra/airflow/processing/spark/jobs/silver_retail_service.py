@@ -1,25 +1,3 @@
-#!/usr/bin/env python3
-"""
-Silver layer builder for retail analytics.
-
-This job transforms data from the Bronze layer into the Silver layer following
-the Kimball Star Schema design pattern.
-
-Sources:
-- Bronze CDC tables (users, products, inventory, suppliers, warehouses, ...)
-- Bronze raw_events (orders, payments, shipments, interactions)
-
-Objectives:
-- Build dimension tables (dim_*)
-- Build fact tables (fact_*)
-- Validate primary-key constraints before writing
-- Write snapshots to Iceberg tables with appropriate partitioning
-
-Usage:
-  --tables all                          : build all tables
-  --tables dim_date,dim_customer_profile: build a subset of tables
-"""
-
 import argparse
 import logging
 from typing import Iterable, Sequence

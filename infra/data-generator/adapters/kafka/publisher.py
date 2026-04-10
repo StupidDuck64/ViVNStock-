@@ -1,7 +1,3 @@
-"""Kafka Publisher – DIP adapter for EventPublisher.
-
-Backpressure-safe publish wrapping SerializingProducer.
-"""
 from __future__ import annotations
 
 from typing import Mapping, Optional

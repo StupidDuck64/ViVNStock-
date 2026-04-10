@@ -1,5 +1,3 @@
-"""Builder for the inventory position fact table (`fact_inventory_position`)."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

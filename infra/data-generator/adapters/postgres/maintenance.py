@@ -1,5 +1,3 @@
-"""Maintenance – SRP: clean demo tables quickly and safely."""
-
 def clear_postgres(conn) -> None:
     tables = [
         "warehouse_inventory",

@@ -1,7 +1,3 @@
-"""Common Utilities – SRP: IDs, time, and simple caches.
-
-ISP: tiny helpers the generators share.
-"""
 from __future__ import annotations
 
 import random

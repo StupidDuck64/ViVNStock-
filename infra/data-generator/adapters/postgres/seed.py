@@ -1,7 +1,3 @@
-"""Seeder – SRP: bulk upserts for reference data.
-
-Idempotent, minimal, and fast. Kept close to SQL.
-"""
 from __future__ import annotations
 
 import random

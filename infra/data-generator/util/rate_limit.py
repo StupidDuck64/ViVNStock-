@@ -1,7 +1,3 @@
-"""Token Bucket – SRP. OCP: pluggable traffic curve.
-
-a small tool that does one thing well.
-"""
 from __future__ import annotations
 
 import math

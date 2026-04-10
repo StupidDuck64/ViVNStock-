@@ -1,7 +1,3 @@
-"""Postgres Adapters – DIP implementations for repositories.
-
-SRP: keep SQL isolated here. Services see only ports.
-"""
 from __future__ import annotations
 
 import random

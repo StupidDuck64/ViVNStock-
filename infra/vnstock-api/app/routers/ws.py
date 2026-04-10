@@ -1,26 +1,3 @@
-"""
-WebSocket /api/ws/stream — Real-time candle streaming.
-
-Frontend connects:
-  ws://localhost:3080/api/ws/stream?symbol=VCB
-
-Architecture (matching crypto project pattern):
-  Producer polls DNSE REST every 5s → Redis (vnstock:tick:{SYMBOL})
-  This WS endpoint polls Redis every 0.5s, builds a live candle by
-  detecting ANY content change (close/volume), not just timestamp change.
-  This makes the chart "agitate" — the candle wick and body continuously
-  update with each new poll cycle, creating a live trailing effect.
-
-Protocol (server → client):
-  {"type": "tick",  "data": {symbol, time, open, high, low, close, volume}}
-  {"type": "quote", "data": {symbol, bid[], offer[], ...}}
-  {"type": "ping"}
-
-Protocol (client → server):
-  {"type": "subscribe", "symbol": "HPG"}   — switch tracked symbol
-  {"type": "pong"}                          — reply to heartbeat
-"""
-
 import asyncio
 import json
 import logging

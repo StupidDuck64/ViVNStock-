@@ -1,5 +1,3 @@
-"""Builder for `dim_date` (standard calendar table used by all fact tables)."""
-
 from __future__ import annotations
 
 from pyspark.sql import DataFrame, SparkSession, functions as F

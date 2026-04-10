@@ -1,13 +1,3 @@
-"""
-VNStock Backfill, Compact & News DAGs
-
-Handles scheduled and manual tasks:
-  1. Daily backfill of historical 1d data (vnstock3 TCBS)
-  2. 1-Minute backfill (vnstock3 primary, DNSE backup) + aggregation to 5m/15m/30m/1h/4h
-  3. Bronze → Silver compaction (dedup + repartition by symbol)
-  4. News crawling (CafeF, Vietstock, VnEconomy)
-"""
-
 import os
 
 from airflow import DAG
