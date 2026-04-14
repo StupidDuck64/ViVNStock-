@@ -1,0 +1,231 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 300,
+      "title": "🔍 Trino — Query Engine",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Trino Status",
+      "type": "stat",
+      "targets": [
+        { "expr": "up{job=\"trino\"}", "legendFormat": "Trino" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Running Queries",
+      "type": "stat",
+      "targets": [
+        { "expr": "trino_execution_running_queries", "legendFormat": "Running" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Queued Queries",
+      "type": "stat",
+      "targets": [
+        { "expr": "trino_execution_queued_queries", "legendFormat": "Queued" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 4,
+      "title": "Trino JVM Memory",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "jvm_memory_bytes_used{job=\"trino\", area=\"heap\"}", "legendFormat": "Heap Used" },
+        { "expr": "jvm_memory_bytes_max{job=\"trino\", area=\"heap\"}", "legendFormat": "Heap Max" },
+        { "expr": "jvm_memory_bytes_used{job=\"trino\", area=\"nonheap\"}", "legendFormat": "Non-Heap Used" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "title": "Trino Query Execution Time",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(trino_execution_wall_input_data_cpu_time_seconds_total[5m])", "legendFormat": "CPU Time (rate)" },
+        { "expr": "rate(trino_execution_executor_pool_size[5m])", "legendFormat": "Executor Pool" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 301,
+      "title": "🚀 ClickHouse — Speed Layer",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ]
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 14 },
+      "id": 6,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "ClickHouse Status",
+      "type": "stat",
+      "targets": [
+        { "expr": "up{job=\"clickhouse\"}", "legendFormat": "ClickHouse" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal" } } } },
+      "gridPos": { "h": 8, "w": 10, "x": 4, "y": 14 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "title": "ClickHouse Insert Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(ClickHouseProfileEvents_InsertedRows[5m])", "legendFormat": "Inserted Rows/s" },
+        { "expr": "rate(ClickHouseProfileEvents_InsertedBytes[5m])", "legendFormat": "Inserted Bytes/s" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 14 },
+      "id": 8,
+      "title": "ClickHouse Query Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(ClickHouseProfileEvents_Query[5m])", "legendFormat": "Total Queries/s" },
+        { "expr": "rate(ClickHouseProfileEvents_SelectQuery[5m])", "legendFormat": "SELECT/s" },
+        { "expr": "rate(ClickHouseProfileEvents_InsertQuery[5m])", "legendFormat": "INSERT/s" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 22 },
+      "id": 9,
+      "title": "ClickHouse Memory Usage",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "ClickHouseMetrics_MemoryTracking", "legendFormat": "Memory Tracking" },
+        { "expr": "ClickHouseAsyncMetrics_TotalBytesOfMergeTreeTables", "legendFormat": "MergeTree Total Bytes" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+      "id": 302,
+      "title": "🐘 PostgreSQL — Metadata Store",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "id": 10,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "title": "PostgreSQL Active Connections",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "pg_stat_activity_count", "legendFormat": "Active Connections" },
+        { "expr": "pg_settings_max_connections", "legendFormat": "Max Connections" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "id": 11,
+      "title": "PostgreSQL Transaction Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(pg_stat_database_xact_commit[5m])", "legendFormat": "Commits/s — {{ datname }}" },
+        { "expr": "rate(pg_stat_database_xact_rollback[5m])", "legendFormat": "Rollbacks/s — {{ datname }}" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
+      "id": 303,
+      "title": "⚡ Redis — Cache Layer",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 40 },
+      "id": 12,
+      "title": "Redis Memory",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "redis_memory_used_bytes", "legendFormat": "Used" },
+        { "expr": "redis_memory_max_bytes", "legendFormat": "Max" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 40 },
+      "id": 13,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Redis Hit Rate",
+      "type": "stat",
+      "targets": [
+        { "expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))", "legendFormat": "Hit Rate" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
+      "id": 14,
+      "title": "Redis Commands/s",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(redis_commands_processed_total[5m])", "legendFormat": "Commands/s" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["vivnstock", "database", "trino", "clickhouse", "postgres", "redis"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Ho_Chi_Minh",
+  "title": "VIVNStock — Database Deep-dive",
+  "uid": "vivnstock-database-deepdive",
+  "version": 1
+}

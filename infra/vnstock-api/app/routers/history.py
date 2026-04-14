@@ -51,7 +51,7 @@ TABLE_MAP = {
     "30m": "bronze.vnstock_ohlc_30m",
     "1h":  "bronze.vnstock_ohlc_1h",
     "4h":  "bronze.vnstock_ohlc_4h",
-    "1d":  "gold.vnstock_ohlc_1d",
+    "1d":  "bronze.vnstock_ohlc_1d",
     "1":   "bronze.vnstock_ohlc_stock",
 }
 

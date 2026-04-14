@@ -1,40 +1,46 @@
 groups:
-- name: "Node-Exporter"
+# ════════════════════════════════════════════════════════════════════════════════
+# INFRASTRUCTURE — Host & Container
+# ════════════════════════════════════════════════════════════════════════════════
+- name: "Infrastructure"
   rules:
-    - alert: HostMemoryIsUnderutilized
-      expr: (100 * node_memory_MemAvailable_bytes{instance="node-exporter:9100", job="node-exporter"} / node_memory_MemTotal_bytes{instance="node-exporter:9100", job="node-exporter"}) < 20
-      for: 15s
+    - alert: HostMemoryCritical
+      expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 15
+      for: 2m
       labels:
         severity: critical
+        team: infra
       annotations:
-        summary: Host Memory is underutilized (Instance {{ $labels.instance }})
-        description: "Node memory is < 20% for 15 seconds. Consider increasing memory or optimizing usage. (Instance {{ $labels.instance }})\n  Remaining Memory = {{ $value }}%\n  Labels = {{ $labels }}"
+        summary: "Host memory critically low ({{ $value | printf \"%.1f\" }}% free)"
+        description: "Available memory on {{ $labels.instance }} dropped below 15%."
+        runbook: "Check top memory consumers: `docker stats --no-stream | sort -k4 -rn`"
 
     - alert: HostHighCpuUsage
       expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
       for: 5m
       labels:
         severity: warning
+        team: infra
       annotations:
-        summary: "Host CPU usage > 85% ({{ $labels.instance }})"
-        description: "CPU usage is {{ $value }}%"
+        summary: "Host CPU > 85% ({{ $value | printf \"%.1f\" }}%)"
 
-    - alert: HostDiskSpaceLow
-      expr: (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 > 85
+    - alert: HostDiskFilling
+      expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
       for: 5m
       labels:
-        severity: warning
+        severity: critical
+        team: infra
       annotations:
-        summary: "Disk usage > 85% on {{ $labels.instance }}"
-        description: "Disk usage is {{ $value }}%"
+        summary: "Disk free < 15% on {{ $labels.instance }} ({{ $value | printf \"%.1f\" }}% remaining)"
+        description: "Root filesystem running low. Clean Docker images or expand volume."
+        runbook: "docker system prune -af && docker volume prune -f"
 
-- name: "Container"
-  rules:
     - alert: ContainerHighMemoryUsage
       expr: (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100) > 90
       for: 5m
       labels:
         severity: warning
+        team: infra
       annotations:
         summary: "Container {{ $labels.name }} memory > 90%"
 
@@ -43,139 +49,209 @@ groups:
       for: 5m
       labels:
         severity: warning
+        team: infra
       annotations:
         summary: "Container {{ $labels.name }} CPU > 80%"
 
-    - alert: ContainerRestarting
+    - alert: ContainerRestartLoop
       expr: increase(container_last_seen{name!=""}[10m]) == 0
       for: 5m
       labels:
         severity: critical
+        team: infra
       annotations:
-        summary: "Container {{ $labels.name }} not seen for 5m"
+        summary: "Container {{ $labels.name }} not seen for 5m — possible crash loop"
 
-- name: "Kafka"
+# ════════════════════════════════════════════════════════════════════════════════
+# DATA PIPELINE — Kafka, Spark
+# ════════════════════════════════════════════════════════════════════════════════
+- name: "DataPipeline"
   rules:
+    - alert: KafkaConsumerGroupLag
+      expr: kafka_consumergroup_lag_sum > 0 and on() (time() - kafka_consumergroup_lag_sum > 0) > 300
+      for: 5m
+      labels:
+        severity: critical
+        team: data
+      annotations:
+        summary: "Kafka consumer group {{ $labels.consumergroup }} lagging > 5 minutes on {{ $labels.topic }}"
+        description: "Consumer lag indicates data pipeline stalling. Check Spark streaming job health."
+
     - alert: KafkaConsumerLagHigh
-      expr: kafka_consumer_group_lag > 10000
+      expr: kafka_consumergroup_lag_sum > 10000
       for: 5m
       labels:
         severity: warning
+        team: data
       annotations:
-        summary: "Kafka consumer group {{ $labels.group }} lag > 10k on {{ $labels.topic }}"
+        summary: "Kafka consumer group {{ $labels.consumergroup }} lag > 10k messages on {{ $labels.topic }}"
 
     - alert: KafkaBrokerDown
       expr: up{job="kafka"} == 0
       for: 1m
       labels:
         severity: critical
+        team: data
       annotations:
-        summary: "Kafka broker is DOWN"
-
-- name: "Spark"
-  rules:
-    - alert: SparkWorkerDown
-      expr: up{job="spark-worker"} == 0
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Spark worker {{ $labels.instance }} is DOWN"
+        summary: "Kafka broker is DOWN — all streaming pipelines affected"
 
     - alert: SparkMasterDown
       expr: up{job="spark-master"} == 0
       for: 1m
       labels:
         severity: critical
+        team: data
       annotations:
-        summary: "Spark master is DOWN"
+        summary: "Spark master is DOWN — no new jobs can be submitted"
 
-- name: "VNStock-API"
+    - alert: SparkWorkerDown
+      expr: up{job="spark-worker"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        team: data
+      annotations:
+        summary: "Spark worker {{ $labels.instance }} is DOWN — processing capacity reduced"
+
+# ════════════════════════════════════════════════════════════════════════════════
+# APPLICATION — VNStock API
+# ════════════════════════════════════════════════════════════════════════════════
+- name: "VNStockAPI"
   rules:
     - alert: VNStockApiDown
       expr: up{job="vnstock-api"} == 0
       for: 1m
       labels:
         severity: critical
+        team: app
       annotations:
-        summary: "VNStock API is DOWN"
+        summary: "VNStock API is DOWN — frontend cannot fetch data"
+
+    - alert: FastAPIHighErrorRate
+      expr: >
+        (
+          sum(rate(http_requests_total{job="vnstock-api", status=~"5.."}[2m]))
+          /
+          sum(rate(http_requests_total{job="vnstock-api"}[2m]))
+        ) > 0.02
+      for: 2m
+      labels:
+        severity: warning
+        team: app
+      annotations:
+        summary: "VNStock API 5xx error rate > 2% ({{ $value | printf \"%.2f\" }})"
+        description: "More than 2% of requests returning server errors in the last 2 minutes."
+
+    - alert: FastAPICriticalErrorRate
+      expr: >
+        (
+          sum(rate(http_requests_total{job="vnstock-api", status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{job="vnstock-api"}[5m]))
+        ) > 0.10
+      for: 3m
+      labels:
+        severity: critical
+        team: app
+      annotations:
+        summary: "VNStock API 5xx error rate > 10% — service degraded"
 
     - alert: VNStockApiHighLatency
       expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="vnstock-api"}[5m])) > 2
       for: 5m
       labels:
         severity: warning
+        team: app
       annotations:
-        summary: "VNStock API p95 latency > 2s"
+        summary: "VNStock API p95 latency > 2s ({{ $value | printf \"%.2f\" }}s)"
 
-    - alert: VNStockApiHighErrorRate
-      expr: rate(http_requests_total{job="vnstock-api",status=~"5.."}[5m]) / rate(http_requests_total{job="vnstock-api"}[5m]) > 0.05
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: "VNStock API error rate > 5%"
-
-- name: "Redis"
-  rules:
-    - alert: RedisDown
-      expr: up{job="redis"} == 0
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Redis is DOWN"
-
-    - alert: RedisHighMemoryUsage
-      expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 85
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Redis memory usage > 85%"
-
-- name: "MinIO"
-  rules:
-    - alert: MinIODown
-      expr: up{job="minio_cluster"} == 0
-      for: 1m
-      labels:
-        severity: critical
-      annotations:
-        summary: "MinIO is DOWN"
-
-    - alert: MinIODiskUsageHigh
-      expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
-      for: 10m
-      labels:
-        severity: warning
-      annotations:
-        summary: "MinIO disk free < 15%"
-
-- name: "Airflow"
-  rules:
-    - alert: AirflowSchedulerDown
-      expr: up{job="airflow"} == 0
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Airflow scheduler/webserver is DOWN"
-
-- name: "Postgres"
+# ════════════════════════════════════════════════════════════════════════════════
+# DATABASES & STORAGE
+# ════════════════════════════════════════════════════════════════════════════════
+- name: "Databases"
   rules:
     - alert: PostgresDown
       expr: up{job="postgres"} == 0
       for: 1m
       labels:
         severity: critical
+        team: infra
       annotations:
-        summary: "PostgreSQL is DOWN"
+        summary: "PostgreSQL (Hive Metastore) is DOWN"
 
     - alert: PostgresHighConnections
       expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
       for: 5m
       labels:
         severity: warning
+        team: infra
       annotations:
-        summary: "PostgreSQL connections > 80% of max"
+        summary: "PostgreSQL connections > 80% of max ({{ $value | printf \"%.0f\" }}%)"
+
+    - alert: RedisDown
+      expr: up{job="redis"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        team: app
+      annotations:
+        summary: "Redis cache is DOWN — API performance will degrade"
+
+    - alert: RedisHighMemoryUsage
+      expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 85
+      for: 5m
+      labels:
+        severity: warning
+        team: infra
+      annotations:
+        summary: "Redis memory usage > 85%"
+
+    - alert: MinIODown
+      expr: up{job="minio_cluster"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        team: infra
+      annotations:
+        summary: "MinIO (Iceberg storage) is DOWN — data lake unavailable"
+
+    - alert: MinIODiskUsageCritical
+      expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
+      for: 10m
+      labels:
+        severity: critical
+        team: infra
+      annotations:
+        summary: "MinIO disk free < 15% — Iceberg writes may fail"
+
+    - alert: ClickHouseDown
+      expr: up{job="clickhouse"} == 0
+      for: 1m
+      labels:
+        severity: warning
+        team: infra
+      annotations:
+        summary: "ClickHouse is DOWN — speed layer queries affected"
+
+    - alert: TrinoDown
+      expr: up{job="trino"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        team: infra
+      annotations:
+        summary: "Trino query engine is DOWN — batch and API queries affected"
+
+# ════════════════════════════════════════════════════════════════════════════════
+# ORCHESTRATION
+# ════════════════════════════════════════════════════════════════════════════════
+- name: "Orchestration"
+  rules:
+    - alert: AirflowSchedulerDown
+      expr: up{job="airflow"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        team: data
+      annotations:
+        summary: "Airflow scheduler/webserver is DOWN — DAGs not executing"

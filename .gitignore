@@ -48,12 +48,12 @@ infra/airflow/plugins/
 # ============================================================
 # BACKUPS & DUMPS — NEVER COMMIT
 # ============================================================
+backups/
 *.tar.gz
 *.sql
 *.sql.gz
 *.dump
 prod_logs.txt
-morning_startup.ps1
 
 # ============================================================
 # DATA / SPARK GENERATED

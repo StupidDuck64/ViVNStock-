@@ -25,6 +25,124 @@ curl -X PUT "http://localhost:9200/_cluster/settings" \
         }
     }' || true
 
+# ════════════════════════════════════════════════════════════════════════════
+# ILM Policy — vivnstock-logs: hot 7d → delete
+# ════════════════════════════════════════════════════════════════════════════
+echo "Creating ILM policy: vivnstock-logs-policy..."
+curl -X PUT "http://localhost:9200/_ilm/policy/vivnstock-logs-policy" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "policy": {
+            "phases": {
+                "hot": {
+                    "min_age": "0ms",
+                    "actions": {
+                        "rollover": {
+                            "max_size": "5gb",
+                            "max_age": "1d"
+                        },
+                        "set_priority": { "priority": 100 }
+                    }
+                },
+                "warm": {
+                    "min_age": "2d",
+                    "actions": {
+                        "forcemerge": { "max_num_segments": 1 },
+                        "shrink": { "number_of_shards": 1 },
+                        "set_priority": { "priority": 50 }
+                    }
+                },
+                "delete": {
+                    "min_age": "7d",
+                    "actions": { "delete": {} }
+                }
+            }
+        }
+    }' || true
+
+# ════════════════════════════════════════════════════════════════════════════
+# Index Template — vivnstock-logs-* with optimized mappings
+# ════════════════════════════════════════════════════════════════════════════
+echo "Creating index template: vivnstock-logs..."
+curl -X PUT "http://localhost:9200/_index_template/vivnstock-logs" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "index_patterns": ["vivnstock-logs-*"],
+        "template": {
+            "settings": {
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
+                "index.lifecycle.name": "vivnstock-logs-policy",
+                "index.lifecycle.rollover_alias": "vivnstock-logs"
+            },
+            "mappings": {
+                "properties": {
+                    "@timestamp": { "type": "date" },
+                    "message": { "type": "text", "analyzer": "standard" },
+                    "log_level": { "type": "keyword" },
+                    "service": { "type": "keyword" },
+                    "container_name": { "type": "keyword" },
+                    "client_ip": { "type": "ip" },
+                    "http_method": { "type": "keyword" },
+                    "request_path": { "type": "keyword" },
+                    "status_code": { "type": "integer" },
+                    "status_class": { "type": "keyword" },
+                    "response_time": { "type": "float" },
+                    "symbol": { "type": "keyword" },
+                    "batch_size": { "type": "integer" },
+                    "kafka_partition": { "type": "integer" },
+                    "java_class": { "type": "keyword" },
+                    "airflow_module": { "type": "keyword" }
+                },
+                "runtime": {
+                    "error_pct": {
+                        "type": "double",
+                        "script": {
+                            "source": "if (doc['"'"'log_level'"'"'].size() > 0 && doc['"'"'log_level'"'"'].value == '"'"'ERROR'"'"') { emit(1.0); } else { emit(0.0); }"
+                        }
+                    }
+                }
+            }
+        },
+        "priority": 200
+    }' || true
+
+# ════════════════════════════════════════════════════════════════════════════
+# Docker-logs ILM (same retention for fallback index)
+# ════════════════════════════════════════════════════════════════════════════
+echo "Creating ILM policy: docker-logs-policy..."
+curl -X PUT "http://localhost:9200/_ilm/policy/docker-logs-policy" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "policy": {
+            "phases": {
+                "hot": {
+                    "actions": {
+                        "set_priority": { "priority": 50 }
+                    }
+                },
+                "delete": {
+                    "min_age": "3d",
+                    "actions": { "delete": {} }
+                }
+            }
+        }
+    }' || true
+
+curl -X PUT "http://localhost:9200/_index_template/docker-logs" \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "index_patterns": ["docker-logs-*"],
+        "template": {
+            "settings": {
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
+                "index.lifecycle.name": "docker-logs-policy"
+            }
+        },
+        "priority": 100
+    }' || true
+
 echo "Elasticsearch initialization complete!"
 
 # Keep container running by waiting for the background process

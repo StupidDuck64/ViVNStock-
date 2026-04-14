@@ -21,7 +21,7 @@ import {
   HistogramSeries,
   LineSeries,
 } from "lightweight-charts";
-import { fetchHistory, subscribeRealtime, TIMEFRAMES, fetchSummary } from "../services/api";
+import { fetchHistory, subscribeRealtime, TIMEFRAMES, fetchSummary, VN_OFFSET } from "../services/api";
 import ChartOverlay from "./ChartOverlay";
 import IndicatorPanel from "./chart/IndicatorPanel";
 import {
@@ -87,6 +87,10 @@ export default function CandlestickChart({
   const noMoreDataRef = useRef(false);
   const loadOlderDataRef = useRef(null);
   const indicatorSeriesRef = useRef({});   // key → { series: [...LineSeries], histSeries }
+  const chartDisposedRef = useRef(false);
+  const indicatorRafRef = useRef(null);
+  const timeframeRef = useRef("1m");       // always-current timeframe for WS closure
+  const dataLoadingRef = useRef(false);    // guard: skip WS ticks while loading new data
 
   const [timeframe, setTimeframe] = useState("1m");
   const [ohlcv, setOhlcv] = useState(null);
@@ -97,6 +101,9 @@ export default function CandlestickChart({
     { key: "ema", period: 50 },
   ]);
   const [candlePixels, setCandlePixels] = useState([]);
+
+  // Keep timeframeRef in sync so WS closure always reads current value
+  useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
 
   // ─── Create chart once ──────────────────────────────────────
   useEffect(() => {
@@ -188,6 +195,8 @@ export default function CandlestickChart({
     ro.observe(containerRef.current);
 
     return () => {
+      chartDisposedRef.current = true;
+      if (indicatorRafRef.current) cancelAnimationFrame(indicatorRafRef.current);
       ro.disconnect();
       chart.remove();
     };
@@ -196,7 +205,7 @@ export default function CandlestickChart({
   // ─── Indicator series management ────────────────────────────
   const updateIndicatorSeries = useCallback((candles) => {
     const chart = chartRef.current;
-    if (!chart) return;
+    if (!chart || chartDisposedRef.current) return;
 
     // Remove series for indicators no longer active
     const activeKeys = new Set(activeIndicators.map((a) => a.key));
@@ -214,7 +223,8 @@ export default function CandlestickChart({
       const reg = INDICATOR_REGISTRY.find((r) => r.key === ai.key);
       if (!reg) return;
 
-      const result = computeIndicator(ai.key, candles, ai.period);
+      let result;
+      try { result = computeIndicator(ai.key, candles, ai.period); } catch (_) { return; }
       const isOsc = reg.type === "oscillator";
       const scaleId = isOsc ? `osc_${ai.key}` : undefined;
 
@@ -389,6 +399,7 @@ export default function CandlestickChart({
     if (!candleRef.current) return;
     setLoading(true);
     setError(null);
+    dataLoadingRef.current = true;   // pause WS tick processing
 
     const LIMITS = { "1m": 2000, "5m": 2000, "15m": 1500, "30m": 1200, "1h": 1500, "4h": 3000, "1d": 5000 };
     const fetchLimit = LIMITS[timeframe] || 2000;
@@ -445,6 +456,7 @@ export default function CandlestickChart({
     }
 
     setLoading(false);
+    dataLoadingRef.current = false;   // resume WS tick processing
 
     if (connRef.current && prevSymbolRef.current && prevSymbolRef.current !== symbol) {
       connRef.current.switchSymbol(symbol);
@@ -456,11 +468,13 @@ export default function CandlestickChart({
       connRef.current = subscribeRealtime(
         symbol,
         (tick) => {
-          if (!candleRef.current) return;
+          if (!candleRef.current || dataLoadingRef.current) return;
           const rawT = tick.time > 1e12 ? Math.floor(tick.time / 1000) : tick.time;
-          const tfMeta = TIMEFRAMES.find((tf) => tf.key === timeframe);
+          const tfMeta = TIMEFRAMES.find((tf) => tf.key === timeframeRef.current);
           const tfSec = tfMeta ? tfMeta.seconds : 60;
-          const t = Math.floor(rawT / tfSec) * tfSec;
+          // Subtract VN_OFFSET before bucketing, re-add after — ensures
+          // 4h/1d buckets align with history data that has VN_OFFSET baked in.
+          const t = Math.floor((rawT - VN_OFFSET) / tfSec) * tfSec + VN_OFFSET;
 
           const live = liveCandleRef.current;
           if (live && live.time === t) {
@@ -492,8 +506,12 @@ export default function CandlestickChart({
             arr.push({ ...candle });
           }
 
-          // Update indicator series for live candle
-          updateIndicatorSeries(arr);
+          // Update indicator series for live candle (debounced to 1/frame)
+          if (indicatorRafRef.current) cancelAnimationFrame(indicatorRafRef.current);
+          indicatorRafRef.current = requestAnimationFrame(() => {
+            indicatorRafRef.current = null;
+            if (!chartDisposedRef.current) updateIndicatorSeries(arr);
+          });
 
           if (onPriceUpdate) onPriceUpdate(tick);
         },
@@ -512,7 +530,7 @@ export default function CandlestickChart({
   // Poll fallback: when latestPrice is updated (via 3s HTTP poll in App.js),
   // patch the chart's last candle so it never lags behind the header price.
   useEffect(() => {
-    if (!latestPrice || !candleRef.current || !liveCandleRef.current) return;
+    if (!latestPrice || !candleRef.current || !liveCandleRef.current || dataLoadingRef.current) return;
     const price = latestPrice.close;
     if (!price || price <= 0) return;
     const live = liveCandleRef.current;

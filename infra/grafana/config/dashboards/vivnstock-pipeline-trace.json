@@ -1,0 +1,187 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 200,
+      "title": "📡 Kafka — Message Queue",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 15, "stacking": { "mode": "normal" } } } },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull", "max"] } },
+      "title": "Kafka Consumer Group Lag by Topic",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum by (topic) (kafka_consumergroup_lag)", "legendFormat": "{{ topic }}" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] } },
+      "title": "Kafka Messages In/Out Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "sum(rate(kafka_topic_partition_current_offset[5m]))", "legendFormat": "Messages In (rate)" },
+        { "expr": "sum(rate(kafka_consumergroup_current_offset[5m]))", "legendFormat": "Messages Consumed (rate)" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5000 }, { "color": "red", "value": 10000 }] } } },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 9 },
+      "id": 3,
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Consumer Lag — Current",
+      "type": "stat",
+      "targets": [
+        { "expr": "sum by (consumergroup) (kafka_consumergroup_lag)", "legendFormat": "{{ consumergroup }}" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 9 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Kafka Topic Partitions",
+      "type": "stat",
+      "targets": [
+        { "expr": "count(kafka_topic_partition_current_offset) by (topic)", "legendFormat": "{{ topic }}" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 201,
+      "title": "⚡ Spark — Batch & Streaming Processing",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 14 },
+      "id": 5,
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Spark Cluster Status",
+      "type": "stat",
+      "targets": [
+        { "expr": "up{job=\"spark-master\"}", "legendFormat": "Master" },
+        { "expr": "up{job=\"spark-worker\"}", "legendFormat": "{{ instance }}" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 14 },
+      "id": 6,
+      "title": "Spark Worker Memory (JVM Heap)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "metrics_worker_jvm_heap_used{job=\"spark-worker\"}", "legendFormat": "Heap Used — {{ instance }}" },
+        { "expr": "metrics_worker_jvm_heap_max{job=\"spark-worker\"}", "legendFormat": "Heap Max — {{ instance }}" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 14 },
+      "id": 7,
+      "title": "Spark Active Executors & Tasks",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "metrics_master_workers_alive{job=\"spark-master\"}", "legendFormat": "Alive Workers" },
+        { "expr": "metrics_master_apps_running{job=\"spark-master\"}", "legendFormat": "Running Apps" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 202,
+      "title": "🗄️ MinIO — Iceberg Object Storage",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 23 },
+      "id": 8,
+      "options": { "colorMode": "value", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "MinIO Total Storage",
+      "type": "stat",
+      "targets": [
+        { "expr": "minio_cluster_capacity_usable_total_bytes", "legendFormat": "Total" },
+        { "expr": "minio_cluster_capacity_usable_free_bytes", "legendFormat": "Free" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
+      "id": 9,
+      "title": "MinIO S3 Request Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(minio_s3_requests_total{api=~\"putobject|getobject\"}[5m])", "legendFormat": "{{ api }}" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "lineWidth": 2, "fillOpacity": 15 } } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
+      "id": 10,
+      "title": "MinIO Ingress / Egress",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(minio_s3_traffic_received_bytes[5m])", "legendFormat": "Ingress (Write)" },
+        { "expr": "rate(minio_s3_traffic_sent_bytes[5m])", "legendFormat": "Egress (Read)" }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "id": 203,
+      "title": "📋 Pipeline Logs (Loki)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
+      "id": 11,
+      "options": { "showTime": true, "showLabels": true, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" },
+      "title": "Pipeline Error Logs (Last 1h)",
+      "type": "logs",
+      "targets": [
+        { "expr": "{compose_service=~\"producer|spark-master|spark-worker-1|spark-worker-2|vnstock-api|airflow.*\"} |~ \"(?i)(error|exception|fail|traceback)\"", "legendFormat": "" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["vivnstock", "pipeline", "kafka", "spark", "iceberg"],
+  "templating": { "list": [] },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Ho_Chi_Minh",
+  "title": "VIVNStock — Data Pipeline Trace",
+  "uid": "vivnstock-pipeline-trace",
+  "version": 1
+}

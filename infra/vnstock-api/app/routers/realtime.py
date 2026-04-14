@@ -60,7 +60,7 @@ def _secdef_from_iceberg(sym: str) -> dict | None:
         conn = get_trino_connection()
         cur = conn.cursor()
         cur.execute(
-            f"SELECT close FROM iceberg.gold.vnstock_ohlc_1d "
+            f"SELECT close FROM iceberg.bronze.vnstock_ohlc_1d "
             f"WHERE symbol = '{sym}' ORDER BY time DESC LIMIT 1"
         )
         rows = cur.fetchall()

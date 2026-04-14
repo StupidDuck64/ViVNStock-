@@ -18,7 +18,7 @@ const API = "/api";
 
 // Vietnam timezone offset (UTC+7) in seconds — lightweight-charts uses
 // business-day / UTC timestamps, so we shift all times to display Vietnam local time.
-const VN_OFFSET = 7 * 3600;
+export const VN_OFFSET = 7 * 3600;
 
 function wsBaseUrl() {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";

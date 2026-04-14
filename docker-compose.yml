@@ -2250,7 +2250,7 @@ services:
     hostname: logstash
     user: "0"
     environment:
-      - LS_JAVA_OPTS=-Xms512m -Xmx512m
+      - LS_JAVA_OPTS=-Xms256m -Xmx512m
     volumes:
       - ./infra/logstash/config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro,Z
       - ./infra/logstash/config/jvm.options:/usr/share/logstash/config/jvm.options:ro,Z
@@ -2461,6 +2461,30 @@ services:
       - ./infra/alertmanager/config/alertmanager-stage.yml:/config/alertmanager.yml
     command:
       - "--config.file=/config/alertmanager.yml"
+    profiles: [monitoring]
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.12.1
+    container_name: filebeat
+    hostname: filebeat
+    user: root
+    restart: unless-stopped
+    volumes:
+      - ./infra/filebeat/config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat-data:/usr/share/filebeat/data
+    command: ["--strict.perms=false"]
+    depends_on:
+      - logstash
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 128M
     profiles: [monitoring]
 
   execute-migrate-all:
@@ -3044,6 +3068,7 @@ volumes:
   grafana-data:
   loki-data:
   cadvisor-data:
+  filebeat-data:
   hadoop_namenode:
   hadoop_datanode0:
   hadoop_datanode1:

@@ -1,0 +1,112 @@
+# ════════════════════════════════════════════════════════════════════════════════
+# Filebeat — Container Log Shipper → Logstash → Elasticsearch
+# Filters: container labels, drops healthcheck/metrics, multiline Python/Java
+# ════════════════════════════════════════════════════════════════════════════════
+
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      hints.default_config.enabled: false
+
+      # Only collect from containers matching these conditions
+      templates:
+        # ── Pipeline services: Producer, Spark, FastAPI, Trino, Airflow ──
+        - condition:
+            or:
+              - contains:
+                  docker.container.name: "producer"
+              - contains:
+                  docker.container.name: "spark"
+              - contains:
+                  docker.container.name: "vnstock-api"
+              - contains:
+                  docker.container.name: "trino"
+              - contains:
+                  docker.container.name: "airflow"
+              - contains:
+                  docker.container.name: "kafka"
+              - contains:
+                  docker.container.name: "logstash"
+              - contains:
+                  docker.container.name: "clickhouse"
+          config:
+            - type: container
+              paths:
+                - "/var/lib/docker/containers/${data.docker.container.id}/*.log"
+              # Multiline: Python tracebacks
+              multiline.type: pattern
+              multiline.pattern: '^(Traceback|  File |    |.*Error:|.*Exception:|Caused by:|\tat )'
+              multiline.negate: false
+              multiline.match: after
+              multiline.max_lines: 50
+              multiline.timeout: 5s
+
+# ── Processors ──
+processors:
+  # Add Docker metadata
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+
+  # Add hostname
+  - add_host_metadata: ~
+
+  # Drop healthcheck and metrics noise
+  - drop_event:
+      when:
+        or:
+          - contains:
+              message: "/health"
+          - contains:
+              message: "/api/health"
+          - contains:
+              message: "/api/metrics"
+          - contains:
+              message: "GET /metrics"
+          - contains:
+              message: "/-/healthy"
+          - contains:
+              message: "/ready"
+          - regexp:
+              message: "^\\s*$"
+
+  # Extract log level from message
+  - script:
+      lang: javascript
+      source: |
+        function process(event) {
+          var msg = event.Get("message");
+          if (msg) {
+            msg = msg.toUpperCase();
+            if (msg.indexOf("ERROR") !== -1 || msg.indexOf("EXCEPTION") !== -1 || msg.indexOf("TRACEBACK") !== -1) {
+              event.Put("log_level", "ERROR");
+            } else if (msg.indexOf("WARN") !== -1) {
+              event.Put("log_level", "WARN");
+            } else if (msg.indexOf("DEBUG") !== -1) {
+              event.Put("log_level", "DEBUG");
+            } else {
+              event.Put("log_level", "INFO");
+            }
+          }
+        }
+
+# ── Output to Logstash ──
+output.logstash:
+  hosts: ["logstash:5044"]
+  bulk_max_size: 2048
+  worker: 2
+
+# ── Logging ──
+logging.level: warning
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 3
+  permissions: 0640
+
+# ── Performance ──
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 5s

@@ -20,6 +20,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import CandlestickChart from "./components/CandlestickChart";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Watchlist from "./components/Watchlist";
 import NewsTicker from "./components/NewsTicker";
 import QuotePanel from "./components/QuotePanel";
@@ -112,8 +113,7 @@ export default function App() {
       <header className="flex items-center justify-between px-4 py-2 bg-bg-secondary border-b border-bg-tertiary">
         <div className="flex items-center gap-3">
           <h1 className="text-sm font-bold tracking-wide">
-            <span className="text-blue-400">VVS</span>{" "}
-            <span className="text-text-secondary font-normal">Dashboard</span>
+            <span className="text-blue-400">VVStock</span>
           </h1>
           <span className="text-xs text-bg-tertiary">│</span>
 
@@ -203,16 +203,18 @@ export default function App() {
 
           {/* Center: Chart + Overlay */}
           <main className="flex-1 relative">
-            <CandlestickChart
-              symbol={symbol}
-              latestPrice={latestPrice}
-              onPriceUpdate={handlePriceUpdate}
-              onQuoteUpdate={handleQuoteUpdate}
-              activeTool={activeTool}
-              drawings={drawings}
-              onAddDrawing={handleAddDrawing}
-              toolSettings={toolSettings}
-            />
+            <ErrorBoundary>
+              <CandlestickChart
+                symbol={symbol}
+                latestPrice={latestPrice}
+                onPriceUpdate={handlePriceUpdate}
+                onQuoteUpdate={handleQuoteUpdate}
+                activeTool={activeTool}
+                drawings={drawings}
+                onAddDrawing={handleAddDrawing}
+                toolSettings={toolSettings}
+              />
+            </ErrorBoundary>
           </main>
 
           {/* Right sidebar: Quote Panel */}
